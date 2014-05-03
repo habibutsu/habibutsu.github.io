@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<!--
+  Google HTML5 slide template
+
+  Authors: Luke Mahé (code)
+           Marcin Wichary (code and design)
+           
+           Dominic Mazzoni (browser compatibility)
+           Charles Chen (ChromeVox support)
+
+  URL: http://code.google.com/p/html5slides/
+-->
+<html>
+<head>
+    <title>Presentation</title>
+    <meta charset='utf-8'>
+    <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
+</head>
+<style>
+    /* Your individual styles here, or just use inline styles if that’s
+       what you want. */
+    
+</style>
+<body style='display: none'>
+
+<section class='slides layout-regular template-default'>
+
+<article class='nobackground'>
+    <h1>Go</h1>
+    <h3>Язык программирования</h3>
+    <h4>часть 1 - запуск<h4>
+    <img style="left: 50%; top: 30%; position: absolute;" width="200" src="media/golang.jpg">
+</article>
+
+<article class='nobackground'>
+    <h3>Hello World<h3>
+    <pre>
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello World")
+}
+    </pre>
+    <p>Собираем и смотрим на результат выполнения</p>
+    <pre>
+$ go build hello.go
+$ ./hello 
+Hello World 
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
+
+<h3>Точка входа</h3>
+
+<pre>
+$ objdump -f hello
+
+hello:     file format elf64-x86-64
+architecture: i386:x86-64, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x0000000000421700
+</pre>
+
+<pre>
+$ objdump -d hello|grep -A 10 \
+>     $(objdump -f hello|grep "start"|egrep -o '[0-9]+$')
+0000000000421700 &lt;_rt0_amd64_linux&gt;:
+  421700:   48 8d 74 24 08          lea    0x8(%rsp),%rsi
+  421705:   48 8b 3c 24             mov    (%rsp),%rdi
+  421709:   b8 10 17 42 00          mov    $0x421710,%eax
+  42170e:   ff e0                   jmpq   *%rax
+
+0000000000421710 &lt;main&gt;:
+  421710:   b8 70 f9 41 00          mov    $0x41f970,%eax
+  421715:   ff e0                   jmpq   *%rax
+    ...
+</pre>
+</article>
+
+<article class='nobackground'>
+
+<h3>Точка входа (i386:x86-64)</h3>
+<!--
+    $ cd go1.2.1/src/pkg/runtime/
+    $ ls rt0_*.s
+    rt0_darwin_386.s       rt0_freebsd_amd64.s  rt0_netbsd_386.s     rt0_plan9_386.s
+    rt0_darwin_amd64.s     rt0_freebsd_arm.s    rt0_netbsd_amd64.s   rt0_plan9_amd64.s
+    rt0_dragonfly_386.s    rt0_linux_386.s      rt0_netbsd_arm.s     rt0_windows_386.s
+    rt0_dragonfly_amd64.s  rt0_linux_amd64.s    rt0_openbsd_386.s    rt0_windows_amd64.s
+    rt0_freebsd_386.s      rt0_linux_arm.s      rt0_openbsd_amd64.s
+-->
+
+<pre>
+TEXT _rt0_amd64_linux(SB),NOSPLIT,$-8
+    LEAQ    8(SP), SI // argv
+    MOVQ    0(SP), DI // argc
+    MOVQ    $main(SB), AX
+    JMP AX
+
+TEXT main(SB),NOSPLIT,$-8
+    MOVQ    $_rt0_go(SB), AX
+    JMP AX
+</pre>
+<p>
+    Дынне переданные системному вызову sys_execve лежат в регистрах - сохраняем
+    их на стеке и вызываем _rt0_go
+</p>
+</article>
+<article class='nobackground'>
+    <h3>_rt0_go</h3>
+<pre>
+CALL    runtime·args(SB)
+CALL    runtime·osinit(SB)
+CALL    runtime·hashinit(SB)
+CALL    runtime·schedinit(SB)
+
+// create a new goroutine to start program
+PUSHL   $runtime·main·f(SB) // entry
+PUSHL   $0  // arg size
+ARGSIZE(8)
+CALL    runtime·newproc(SB)
+ARGSIZE(-1)
+POPL    AX
+POPL    AX
+
+// start this M
+CALL    runtime·mstart(SB)
+</pre>
+</article>
+
+<article class="nobackground smaller">
+    <h3>_rt0_go</h3>
+    <ul>
+        <li>Получаем информацию о кол-ве CPU (runtime·ncpu)</li>
+        <li>Установка хэш-алгоритма если процессор поддерживает инструкции aes, sse3, sse4.1<li>
+        <li>Инициализация планировщика</li>
+        <ul>
+            <li>Инициализация стуркутры для основного процесса</li>
+            <li>Размещение внутренней символьной таблицы</li>
+            <li>Cоздание массива под процессоры (runtime·allp)</p>
+            <li>и пр.</li>
+        </ul>
+        <li>Создание нового горутина для запуска runtime·main·f</li>
+        <li>Запуск на выполенния (runtime·mstart)</li>
+        <ul>
+            <li>runtime·asminit();</li>
+            <li>runtime·minit();</li>
+            <li>schedule();</li>
+        </ul>
+    </ul>
+</article>
+
+<article class="nobackground">
+    <h3>_rt0_go</h3>
+    <p>Состояние до вызова schedule()</p>
+<pre>
+(gdb) i goproc 
+P:0 running schedtick=0 syscalltick=0 gfreecnt=0 runq[128]
+    o G:1 runnable runtime.main
+    ...
+
+(gdb) i gothreads 
+M:0 procid=0 curg=&lt;o G:null&gt; p=&lt;P:0&gt;
+</pre>
+</article>
+
+<article class="nobackground">
+    <h3>schedule()</h3>
+    <p>Достает из очереди процессора ожидающую выполенение
+горутину и запускает ее посредством вызова execute</p>
+<pre>
+static void
+schedule(void)
+{
+    ...
+    if(gp == nil) {
+        gp = runqget(m->p);
+        if(gp && m->spinning)
+            runtime·throw("schedule: spinning with local work");
+    }
+    ...
+    execute(gp);
+}
+</pre>
+</article>
+
+<article class="nobackground">
+    <h3>execute()</h3>
+    <ul>
+        <li>Связывает горутину с заданным потоком (M)</li>
+        <li>Увеличивает счетчик планировщика</li>
+        <li>Сбрасвает при необходимости таймер профайлера</li>
+    </ul>
+<pre>
+static void
+execute(G *gp)
+{
+    ...
+    gp->status = Grunning;
+    gp->preempt = false;
+    gp->stackguard0 = gp->stackguard;
+    m->p->schedtick++;
+    m->curg = gp;
+    gp->m = m;
+    ...
+    runtime·gogo(&gp->sched);
+}
+</pre>
+</article>
+
+<article class="nobackground">
+    <h3>execute()</h3>
+    <p>Состояние перед вызовом runtime·gogo</p>
+<pre>
+(gdb) i gothreads 
+M:0 procid=0 curg=&lt;* G:1 running runtime.main m=&lt;M:0&gt;&gt; p=&lt;P:0&gt;
+
+(gdb) i goproc 
+P:0 running schedtick=1 syscalltick=0 gfreecnt=0 runq[128]
+    ...
+
+(gdb) i goroutines 
+* G:1 running runtime.main m=&lt;M:0&gt;
+</pre>
+</article>
+
+<article class="nobackground">
+    <h3>runtime·gogo()</h3>
+<pre>
+// void gogo(Gobuf*)
+// restore state from Gobuf; longjmp
+TEXT runtime·gogo(SB), NOSPLIT, $0-8
+    MOVQ    8(SP), BX       // gobuf
+    MOVQ    gobuf_g(BX), DX
+    MOVQ    0(DX), CX       // make sure g != nil
+    get_tls(CX)
+    MOVQ    DX, g(CX)
+    MOVQ    gobuf_sp(BX), SP    // restore SP
+    MOVQ    gobuf_ret(BX), AX
+    MOVQ    gobuf_ctxt(BX), DX
+    MOVQ    $0, gobuf_sp(BX)    // clear to help garbage collector
+    MOVQ    $0, gobuf_ret(BX)
+    MOVQ    $0, gobuf_ctxt(BX)
+    MOVQ    gobuf_pc(BX), BX
+    JMP BX
+</pre>
+</article>
+<article class="nobackground">
+    <h3>runtime·main()</h3>
+<pre>
+// The main goroutine.
+void
+runtime·main(void)
+{
+    ..
+    newm(sysmon, nil);
+    ...
+    runtime·newproc1(&scavenger, nil, 0, 0, runtime·main);
+    main·init();
+    ...
+    main·main();
+    ...
+    runtime·exit(0);
+    for(;;)
+        *(int32*)runtime·main = 0;
+}
+</pre>
+</article>
+
+<article class="nobackground smaller">
+    <h3>runtime·main()</h3>
+    <p>Состояние к моменту вызова main·main</p>
+<pre>
+(gdb) i gothreads 
+M:3 procid=27165 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:2 procid=27164 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:1 procid=27108 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:0 procid=0 curg=&lt;* G:1 running runtime.unlockOSThread m=&lt;M:0&gt;&gt; p=&lt;P:0&gt;
+
+(gdb) i goproc 
+P:0 running schedtick=5 syscalltick=0 gfreecnt=0 runq[128]
+    o G:2 runnable runtime.exitsyscall m=&lt;M:null&gt;
+    ...
+
+(gdb) i goroutines 
+* G:1 running runtime.unlockOSThread m=&lt;M:0&gt;
+o G:2 runnable runtime.exitsyscall m=&lt;M:null&gt;
+</pre>
+<pre>
+$ pstree -pa 26430
+gdb,26430 example1
+  └─example1,26485
+      ├─{example1},27108
+      ├─{example1},27164
+      └─{example1},27165
+</pre>
+</article>
+
+<article class="nobackground">
+    <h3>runtime·main()</h3>
+    <p>К моменту завершения программы</p>
+<pre>
+(gdb) i gothreads 
+M:3 procid=27165 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:2 procid=27164 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:1 procid=27108 curg=&lt;o G:null&gt; p=&lt;P:null&gt;
+M:0 procid=0 curg=&lt;* G:1 running syscall.Syscall m=&lt;M:0&gt;&gt; p=&lt;P:0&gt;
+
+(gdb) i goproc 
+P:0 running schedtick=5 syscalltick=1 gfreecnt=0 runq[128]
+    o G:2 runnable runtime.exitsyscall m=&lt;M:null&gt;
+    ...
+
+(gdb) i goroutines 
+* G:1 running syscall.Syscall m=&lt;M:0&gt;
+o G:2 runnable runtime.exitsyscall m=&lt;M:null&gt;
+</pre>
+</article>
+</section>
+</body>
+</html>

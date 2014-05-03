@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+  Google HTML5 slide template
+
+  Authors: Luke Mahé (code)
+           Marcin Wichary (code and design)
+           
+           Dominic Mazzoni (browser compatibility)
+           Charles Chen (ChromeVox support)
+
+  URL: http://code.google.com/p/html5slides/
+-->
+<html>
+<head>
+    <title>Presentation</title>
+    <meta charset='utf-8'>
+    <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
+</head>
+<style>
+    /* Your individual styles here, or just use inline styles if that’s
+       what you want. */
+    
+</style>
+<body style='display: none'>
+
+<section class='slides layout-regular template-default'>
+
+<article class='nobackground'>
+    <h1>Go</h1>
+    <h3>Язык программирования</h3>
+    <h4>часть 2 - планировщик<h4>
+    <img style="left: 50%; top: 30%; position: absolute;" width="200" src="media/golang.jpg">
+</article>
+
+<article class='nobackground'>
+<h3>Планировщик</h3>
+
+<div class='source'>
+    http://supertech.csail.mit.edu/papers/steal.pdf
+</div>
+</article>
+
+<article class='nobackground'>
+<h3>Горутина (Goroutine)</h3>
+<pre>
+struct  G {
+    uintptr stackguard;  // segmented stacks
+    uintptr stackbase;
+    int64   goid;        // id for stack dumps
+    int16   status;      // running, runnable, blocked
+    Gobuf   sched;       // saved registers
+    G*      alllink;     // links all goroutines
+    G*      schedlink;   // links G's in schuedler
+    // panic, defer, etc, etc
+};
+</pre>
+</article>
+
+<article class='nobackground'>
+<h3>Процессор</h3>
+<pre>
+struct P {
+    Lock;
+    int32   id;
+    uint32  status;         // one of Pidle/Prunning/...
+    uint32  schedtick;      // incremented on every scheduler call
+    uint32  syscalltick;    // incremented on every system call
+
+    MCache* mcache;
+
+    // Queue of runnable goroutines.
+    G**     runq;
+    int32   runqhead;
+    int32   runqtail;
+    int32   runqsize;
+
+    // Available G's (status == Gdead)
+    G*      gfree;
+    int32   gfreecnt;
+};
+</pre>
+</article>
+
+<article class='nobackground'>
+<h3>Поток</h3>
+<pre>
+struct  M {
+    int32   id;
+    G*      g0;             // goroutine with scheduling stack
+    G*      gsignal;        // signal-handling G
+    G*      curg;           // current running goroutine
+    G*      lockedg;        // locked goroutine
+    P*      p;              // attached P for executing Go code
+    M*      alllink;        // links all M's
+    M*      schedlink;      // links M's in scheduler
+    void*   stackcache[];   // stack segment cache
+    // lots of other stuff
+};
+</pre>
+</article>
+
+<article class='nobackground'>
+<h3>Планировщик</h3>
+<pre>
+struct Sched {
+    Lock;
+    uint64  goidgen;
+    M*      midle;  // idle m's waiting for work
+    P*      pidle;  // idle P's
+
+    // Global runnable queue.
+    G*      runqhead;
+    G*      runqtail;
+    int32   runqsize;
+
+    // Global cache of dead G's.
+    Lock    gflock;
+    G*      gfree;
+
+    uint32  gcwaiting;      // gc is waiting to run
+    ...
+};
+</pre>
+</article>
+
+
+</section>
+</body>
+</html>
