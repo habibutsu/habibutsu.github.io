@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!--
+  Google HTML5 slide template
+
+  Authors: Luke Mahé (code)
+           Marcin Wichary (code and design)
+           
+           Dominic Mazzoni (browser compatibility)
+           Charles Chen (ChromeVox support)
+
+  URL: http://code.google.com/p/html5slides/
+-->
+<html>
+<head>
+    <title>Erlang - Язык программирования (часть 1 - компиляция)</title>
+    <meta charset='utf-8'>
+    <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
+
+</head>
+<style>
+    /* Your individual styles here, or just use inline styles if that’s
+       what you want. */
+    
+</style>
+<body style='display: none'>
+
+<section class='slides layout-regular template-default'>
+
+<article class='nobackground'>
+    <h1>Erlang</h1>
+    <h4>часть 1 - компиляция<h4>
+    <img style="left: 70%; top: 30%; position: absolute;" src="http://www.erlang.org/doc/erlang-logo.png">
+</article>
+
+<article class='nobackground'>
+    <h3>Hello World<h3>
+    <pre>
+        <code>
+-module(hello).
+-export([world/0]).
+
+world() ->
+    io:fwrite("Hello, world\n").
+</code>
+    </pre>
+    <p>Компилируем и запускаем</p>
+    <pre>
+$ erlc hello.erl
+$ erl -noshell -s hello world -s init stop
+Hello World 
+    </pre>
+
+</article>
+
+<article class='nobackground smaller'>
+    <h3>Отладочная информация и дизасемблирование<h3>
+
+    <pre style="font-size: 10px; line-height: 16px;">
+$ erlc +debug_info hello.erl
+$ erl
+Erlang R15B03 (erts-5.9.3.1) [source] [64-bit] [smp:4:4] [async-threads:0] [kernel-poll:false]
+
+Eshell V5.9.3.1  (abort with ^G)
+1> {ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks("hello.beam",[abstract_code]).
+{ok,{hello,[{abstract_code,{raw_abstract_v1,[{attribute,1,
+                                                        file,
+                                                        {"hello.erl",1}},
+                                             {attribute,1,module,hello},
+                                             {attribute,2,export,[{world,0}]},
+                                             {function,4,world,0,
+                                                       [{clause,4,[],[],[{call,5,{remote,...},[...]}]}]},
+                                             {eof,5}]}}]}}
+2> io:fwrite("~s~n", [erl_prettypr:format(erl_syntax:form_list(AC))]).
+-file("hello.erl", 1).
+
+-module(hello).
+
+-export([world/0]).
+
+world() -> io:fwrite("Hello, world\n").
+
+
+ok
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>Пример Makefile<h3>
+    <pre>
+EBIN_DIR := ebin
+SRC_DIR := src
+INCLUDE_DIR := include
+ERLC := erlc
+ERLC_FLAGS := +debug_info +native -W -I $(INCLUDE_DIR) -o $(EBIN_DIR)
+
+all:
+    @mkdir -p $(EBIN_DIR)
+    $(ERLC) $(ERLC_FLAGS) $(SRC_DIR)/*.erl
+
+clean:
+    @rm -rf $(EBIN_DIR)/*
+    @rm -f erl_crash.dump
+    </pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Внутреннее представление<h3>
+    <p>
+        <ul>
+            <li>Core Erlang</li>
+            <li>BEAM</li>
+            <li>ERTS представление</li>
+        </ul>
+    </p>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>Core Erlang<h3>
+    
+    <pre>
+$ erl
+1> c(hello, to_core).
+2> c(hello, from_core).
+3> q().
+$ cat hello.core
+module 'hello' ['module_info'/0,
+        'module_info'/1,
+        'world'/0]
+    attributes []
+'world'/0 =
+    %% Line 4
+    fun () ->
+    %% Line 5
+    call 'io':'fwrite'
+        ([72|[101|[108|[108|[111|[44|[32|[119|[111|[114|[108|[100|[10]]]]]]]]]]]]])
+'module_info'/0 =
+    fun () ->
+    call 'erlang':'get_module_info'
+        ('hello')
+'module_info'/1 =
+    fun (_cor0) ->
+    call 'erlang':'get_module_info'
+        ('hello', _cor0)
+end
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>BEAM<h3>
+    <pre style="font-size: 10px; line-height: 14px;">
+$ erlc -S hello.erl 
+$ cat hello.S
+{module, hello}.  %% version = 0
+
+{exports, [{module_info,0},{module_info,1},{world,0}]}.
+
+{attributes, []}.
+
+{labels, 7}.
+
+{function, world, 0, 2}.
+  {label,1}.
+    {line,[{location,"hello.erl",4}]}.
+    {func_info,{atom,hello},{atom,world},0}.
+  {label,2}.
+    {move,{literal,"Hello, world\n"},{x,0}}.
+    {line,[{location,"hello.erl",5}]}.
+    {call_ext_only,1,{extfunc,io,fwrite,1}}.
+
+{function, module_info, 0, 4}.
+  {label,3}.
+    {line,[]}.
+    {func_info,{atom,hello},{atom,module_info},0}.
+  {label,4}.
+    {move,{atom,hello},{x,0}}.
+    {line,[]}.
+    {call_ext_only,1,{extfunc,erlang,get_module_info,1}}.
+
+{function, module_info, 1, 6}.
+  {label,5}.
+    {line,[]}.
+    {func_info,{atom,hello},{atom,module_info},1}.
+  {label,6}.
+    {move,{x,0},{x,1}}.
+    {move,{atom,hello},{x,0}}.
+    {line,[]}.
+    {call_ext_only,2,{extfunc,erlang,get_module_info,2}}.
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>ERTS представление<h3>
+    <pre>
+$ erl
+1> erts_debug:df(hello).
+2> q().
+$ cat hello.dis
+00007FF25CEE4EA8: i_func_info_IaaI 0 hello world 0 
+00007FF25CEE4ED0: move_cr "Hello, world\n" x(0) 
+00007FF25CEE4EE0: i_call_ext_only_e io:fwrite/1 
+
+00007FF25CEE4EF0: i_func_info_IaaI 0 hello module_info 0 
+00007FF25CEE4F18: move_cr hello x(0) 
+00007FF25CEE4F28: allocate_tt 0 1 
+00007FF25CEE4F38: call_bif_e erlang:get_module_info/1 
+00007FF25CEE4F48: deallocate_return_Q 0 
+
+00007FF25CEE4F58: i_func_info_IaaI 0 hello module_info 1 
+00007FF25CEE4F80: move_rx x(0) x(1) 
+00007FF25CEE4F90: move_cr hello x(0) 
+00007FF25CEE4FA0: allocate_tt 0 2 
+00007FF25CEE4FB0: call_bif_e erlang:get_module_info/2 
+00007FF25CEE4FC0: deallocate_return_Q 0
+    </pre>
+</article>
+<!--
+Генерация beam_opcodes.erl  beam_opcodes.hrl
+./erts/emulator/utils/beam_makeops -compiler -outdir ~/tmp/out < /lib/compiler/src/genop.tab
+-->
+<article class='nobackground smaller'>
+    <h3>Ссылки<h3>
+    <p>
+    <ul>
+        <li>
+            <a href="https://github.com/erlang/otp/blob/OTP-17.0/erts/emulator/beam/beam_emu.c#L1103">
+            Основной процесс</a> (функция process_main)
+        </li>
+        <li>
+            <a href="https://github.com/erlang/otp/blob/OTP-17.0/erts/emulator/beam/beam_emu.c#L1320">Диспатч опкодов при исполнении</a>
+        </li>
+        <li>
+            <a href="https://github.com/erlang/otp/blob/OTP-17.0/lib/compiler/src/genop.tab">Таблица инструкций для генерации опкодов</a>
+        </li>
+        <li>
+            <a href="http://user.it.uu.se/~pergu/papers/erlang03.pdf">
+                All you wanted to know about the HiPE compiler (but might have been afraid to ask)
+            </a>
+        </li>
+        <li>
+            <a href="http://erlangcentral.org/wiki/index.php/A_Guide_To_The_Erlang_Source">
+            A Guide To The Erlang Source
+            </a>
+        </li>
+        <li>
+            <a href="http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=3D9CC60B9B8860A0E6A6E0E12139078A?doi=10.1.1.20.7146&rep=rep1&type=pdf">
+                An introduction to Core Erlang (2001)
+            </a>
+        </li>
+        <li>
+            <a href="http://prog21.dadgum.com/127.html">
+                A Peek Inside the Erlang Compiler
+            </a>
+        </li>
+        <li>
+            <a href="http://www.cs-lab.org/historical_beam_instruction_set.html">
+                The Erlang BEAM Virtual Machine Specification (October 1997)
+            </a>
+        </li>
+        <li>
+            <a href="https://www.youtube.com/watch?v=fctrWbgbJg0">
+                Hitchhiker's guide to the Erlang VM (video)
+            </a>
+        </li>
+        <li>
+            <a href="http://Fwww.erlang-factory.com/upload/presentations/708/HitchhikersTouroftheBEAM.pdf">
+                Hitchhiker's guide to the Erlang VM (presentation)
+            </a>
+        </li>
+    </ul>
+</p>
+</article>
+
+</section>
+</body>
+</html>
