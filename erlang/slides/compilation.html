@@ -12,10 +12,9 @@
 -->
 <html>
 <head>
-    <title>Erlang - Язык программирования (часть 1 - компиляция)</title>
+    <title>Erlang / часть 1 - компиляция</title>
     <meta charset='utf-8'>
     <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
-
 </head>
 <style>
     /* Your individual styles here, or just use inline styles if that’s
@@ -28,12 +27,12 @@
 
 <article class='nobackground'>
     <h1>Erlang</h1>
-    <h4>часть 1 - компиляция<h4>
-    <img style="left: 70%; top: 30%; position: absolute;" src="http://www.erlang.org/doc/erlang-logo.png">
+    <h4>часть 1 - компиляция</h4>
+    <img style="left: 60%; top: 30%; position: absolute;" src="http://www.erlang.org/doc/erlang-logo.png">
 </article>
 
 <article class='nobackground'>
-    <h3>Hello World<h3>
+    <h3>Hello World</h3>
     <pre>
         <code>
 -module(hello).
@@ -53,9 +52,9 @@ Hello World
 </article>
 
 <article class='nobackground smaller'>
-    <h3>Отладочная информация и дизасемблирование<h3>
+    <h3>Отладочная информация и дизасемблирование</h3>
 
-    <pre style="font-size: 10px; line-height: 16px;">
+    <pre style="font-size: 12px; line-height: 16px;">
 $ erlc +debug_info hello.erl
 $ erl
 Erlang R15B03 (erts-5.9.3.1) [source] [64-bit] [smp:4:4] [async-threads:0] [kernel-poll:false]
@@ -85,13 +84,13 @@ ok
 </article>
 
 <article class='nobackground smaller'>
-    <h3>Пример Makefile<h3>
+    <h3>Пример Makefile</h3>
     <pre>
 EBIN_DIR := ebin
 SRC_DIR := src
 INCLUDE_DIR := include
 ERLC := erlc
-ERLC_FLAGS := +debug_info +native -W -I $(INCLUDE_DIR) -o $(EBIN_DIR)
+ERLC_FLAGS := +debug_info -W -I $(INCLUDE_DIR) -o $(EBIN_DIR)
 
 all:
     @mkdir -p $(EBIN_DIR)
@@ -104,7 +103,7 @@ clean:
 </article>
 
 <article class='nobackground'>
-    <h3>Внутреннее представление<h3>
+    <h3>Внутреннее представление</h3>
     <p>
         <ul>
             <li>Core Erlang</li>
@@ -115,7 +114,7 @@ clean:
 </article>
 
 <article class='nobackground smaller'>
-    <h3>Core Erlang<h3>
+    <h3>Core Erlang</h3>
     
     <pre>
 $ erl
@@ -146,8 +145,8 @@ end
 </article>
 
 <article class='nobackground smaller'>
-    <h3>BEAM<h3>
-    <pre style="font-size: 10px; line-height: 14px;">
+    <h3>BEAM</h3>
+    <pre style="font-size: 12px; line-height: 14px;">
 $ erlc -S hello.erl 
 $ cat hello.S
 {module, hello}.  %% version = 0
@@ -189,6 +188,80 @@ $ cat hello.S
 </article>
 
 <article class='nobackground smaller'>
+    <h3>BEAM</h3>
+    <p>
+        BEAM - Bogdan's Erlang Abstract Machine
+    </p>
+    <p>
+        Interchange File Format (<a href="http://ru.wikipedia.org/wiki/Interchange_File_Format">IFF</a>) - формат файла-контейнера
+    </p>
+    <p>
+        <h4>Чанки которые обязаны присутствовать</h4>
+        <table>
+            <tr>
+                <th>
+                    Идентификатор
+                <th>
+                    Имя чанка
+                <th>
+                    Описание
+            <tr>
+                <td>
+                    Atom
+                <td>
+                    Atom Table Chunk
+                <td>
+                    Определения атомов используемых в файле
+            <tr>
+                <td>
+                    Code
+                <td>
+                    Code Chunk
+                <td>
+                    Определения кода для исполнения
+            <tr>
+                <td>
+                    StrT
+                <td>
+                    String Table Chunk
+                <td>
+                    Определения строк используемых в файле
+            <tr>
+                <td>
+                    ImpT
+                <td>
+                    Import Table Chunk
+                <td>
+                    Определения методов которые импортируются в модуль
+            <tr>
+                <td>
+                    ExpT
+                <td>
+                    Export Table Chunk
+                <td>
+                    Определения методов которые экспортируются из модуля
+        </table>
+    </p>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>BEAM</h3>
+
+    <h4>Регистры</h4>
+    <p>
+        <ul>
+            <li>HTOP - указатель на верх кучи</li>
+            <li>E - указатель на верх стека</li>
+            <li>CP - указатель на адрес возврата</li>
+            <li>I - указатель на следующую инстркуцию</li>
+            <li>x(N) - регистры для аргументов, также могут использоваться для сохранения временных значений</li>
+            <li>y(N) - локальные переменные (y(N) не настоящие регистры, находятся в локальной системе координат, а доступ осуществляется через смещение относительно указателя на верх стека)</li>
+            <li>fcalls - количество выполненых редукций (для выполнения проверки о необходимости приостановки вызванной функции)</li>
+        </ul>
+    </p>
+</article>
+
+<article class='nobackground smaller'>
     <h3>ERTS представление<h3>
     <pre>
 $ erl
@@ -213,13 +286,99 @@ $ cat hello.dis
 00007FF25CEE4FC0: deallocate_return_Q 0
     </pre>
 </article>
+
+<article class='nobackground smaller'>
+    <h3>HiPE</h3>
+    <p>
+        <ul>
+            <li>HiPE - High Performance Erlang</li>
+            <li>Создан в 1996 Uppsala University</li>
+            <li>С октября 2001 полностью интегрирован в Erlang/OTP</li>
+            <li>
+                Поддерживаемые архитектуры:<br>
+                <ul>
+                    <li>x86, amd64</li>
+                    <li>arm</li>
+                    <li>sparc</li>
+                    <li>PowerPC</li>
+                </ul>
+            </li>
+            <li>Опция при компиляции Erlang/OTP <b>--enable-hipe</b></li>
+            <li>
+                Домашняя страница
+                <a hre="http://www.it.uu.se/research/group/hipe/">
+                    http://www.it.uu.se/research/group/hipe/
+                </a>
+            </li>
+        </ul>
+    </p>
+    <pre>
+$ erlc +native hello.erl
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>HiPE</h3>
+    <p>
+        Доступные опции
+        <ul>
+            <li>pp_asm</li>
+            <li>pp_beam</li>
+            <li>pp_icode</li>
+            <li>pp_native</li>
+            <li>pp_rtl</li>
+            <li>полный список - hipe:help_options().</li>
+        </ul>
+    </p>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>HiPE</h3>
+<pre style="font-size: 12px; line-height: 14px;">
+$ erl
+1> hipe:c(hello, [pp_asm]).   
+****************** Assembling *******************
+Generating code for:{hello,module_info,1}
+Offset   | Opcode                   | Instruction
+       0 |                          | ._3:
+       0 | 488bd6                   |   mov %rsi, %rdx
+       3 |                          | ._2:
+       3 | 48c7c600000000           |   mov $hello, %rsi
+       a | e900000000               |   jmp erlang:get_module_info/2 remote
+       f | 90                       |   # padding
+Finished.
+
+Generating code for:{hello,module_info,0}
+Offset   | Opcode                   | Instruction
+      10 |                          | ._2:
+      10 | 48c7c600000000           |   mov $hello, %rsi
+      17 | e900000000               |   jmp erlang:get_module_info/1 remote
+Finished.
+
+Generating code for:{hello,world,0}
+Offset   | Opcode                   | Instruction
+      1c |                          | ._6:
+      1c | 4883ad4001000001         |   sub $0x1, 0x140(%rbp)
+      24 | 7c0f                     |   jl ._3
+      26 |                          | ._5:
+      26 | 48be0000000000000000     |   mov64 ${0,constant}, %rsi
+      30 | e900000000               |   jmp io:fwrite/1 remote
+      35 |                          | ._3:
+      35 | e800000000               |   call suspend_0 # [] 0x0 0 [] not_remote
+      3a | ebea                     |   jmp ._5
+Finished.
+
+Total num bytes=60
+{ok,hello}
+</pre>
+</article>
+
 <!--
 Генерация beam_opcodes.erl  beam_opcodes.hrl
 ./erts/emulator/utils/beam_makeops -compiler -outdir ~/tmp/out < /lib/compiler/src/genop.tab
 -->
 <article class='nobackground smaller'>
-    <h3>Ссылки<h3>
-    <p>
+    <h3>Ссылки</h3>
     <ul>
         <li>
             <a href="https://github.com/erlang/otp/blob/OTP-17.0/erts/emulator/beam/beam_emu.c#L1103">
@@ -266,8 +425,12 @@ $ cat hello.dis
                 Hitchhiker's guide to the Erlang VM (presentation)
             </a>
         </li>
+        <li>
+            <a href="http://synrc.com/publications/cat/Functional%20Languages/Erlang/BEAM.pdf">
+                BEAM File Format (May 20, 2012)
+            </a>
+        </li>
     </ul>
-</p>
 </article>
 
 </section>
