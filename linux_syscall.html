@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Habibutsu">
+
+    <title>Habibutsu / Системный вызов в Linux</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <!-- Custom styles for this template -->
+    <link href="static/theme.css" rel="stylesheet">
+
+    <!-- Just for debugging purposes. Don't actually copy this line! -->
+    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <link rel="stylesheet" href="static/highlight/styles/solarized_dark.css">
+    <script src="static/highlight/highlight.pack.js"></script>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+        //hljs.configure({useBR: true});
+        $('div.code').each(function(i, e) {hljs.highlightBlock(e)});
+    </script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-51121455-1', 'habibutsu.github.io');
+        ga('send', 'pageview');
+    </script>
+</head>
+
+<body role="document">
+
+    <!-- Fixed navbar -->
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Alexander Verbitsky</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="index.html">Главная</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Заметки<b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li class="dropdown-header">Системный вызов в Linux</li>
+                    <li><a href="#">Модель памяти</a></li>
+                    <li><a href="git_help.html">Шпаргалка по Git</a></li>
+                </ul>
+            </li>
+            <li><a href="slides.html">Слайды</a></li>
+            <li><a href="#contact">Контакты</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+    <div class="container theme-showcase" role="main">
+
+    <div class="row well">
+
+        <div class="col-sm-8 blog-main">
+            <div class="blog-post">
+                <h2 class="blog-post-title">Системный вызов в Linux</h2>
+                <p class="blog-post-meta">Март 13, 2014 <a href="#">Habibutsu</a></p>
+                <p>
+                    Небольшая справка по реализации системного вызова на разных платформах в Linux.
+                </p>
+                <p>
+                    <h4>Aссемблерная инструкция</h4>
+                    <ul>
+                        <li>intel x86  <b>int $0x80</b></li>
+                        <li>intel x86-64 <b>syscall</b></li>
+                        <li>armv71 <b>svc 0x0</b></li>
+                    </ul>
+
+                    <h4>Номер вызова</h4>
+                    <ul>
+                        <li>intel x86  <b>регистр EAX</b></li>
+                        <li>intel x86-64 <b>регистр RAX</b></li>
+                        <li>armv71 <b>регистр r7</b></li>
+                    </ul>
+
+                    <h4>Передача параметров</h4>
+                    
+                    Менее 6 параметров:
+                    <ul>
+                        <li>intel x86  <b>регистры EBX, ECX, EDX, ESI, EDI, EBP</b></li>
+                        <li>intel x86-64 <b>регистры RDI, RSI, RDX, R10, R8, R9</b></li>
+                        <li>armv71 <b>регистры r0, r1, r2, r3, r4, r5, r6</b></li>
+                    </ul>
+
+                    Более 6 параметров:
+                    <ul>
+                        <li>intel x86  <b>указатель на область памяти через регистр EBX </b></li>
+                        <li>intel x86-64 <b style="color:red">запрещено</b></li>
+                    </ul>
+
+                    <h4>Возврат результата</h4>
+
+                    <ul>
+                        <li>intel x86  <b>регистр EAX</b></li>
+                        <li>intel x86-64 <b>регистр RAX</b></li>
+                        <li>armv71 <b>регистр r0</b></li>
+                    </ul>
+
+<h4>Примеры</h4>
+
+Реализация на C:
+<pre class="c">
+<code>#include &lt;sys/syscall.h>
+
+int main(void)
+{
+    syscall(SYS_write, 1, "Hello, world\n", 14);
+    return 0;
+}
+</code></pre>
+
+intel x86:
+
+<pre class="avrasm">
+<code>#include &lt;asm/unistd.h>
+#include &lt;syscall.h>
+    .global _start
+    .text
+
+message:
+    .string "Hello, world\n"
+
+_start:
+    # syscall SYS_write
+    mov $SYS_write, %eax 
+    mov $1, %ebx        # stdout
+    mov $message, %ecx 
+    mov $14, %edx       # length
+    int $0x80
+
+    # exit 0
+    mov $SYS_exit, %eax 
+    mov $0, %ebx 
+    int $0x80
+</code></pre>
+
+intel x86-64:
+
+<pre class="avrasm">
+<code>#include &lt;asm/unistd.h>
+#include &lt;syscall.h>
+    .global _start
+    .text
+
+message:
+    .string "Hello, world\n"
+
+_start:
+    # syscall SYS_write
+    movl    $SYS_write, %eax
+    movl    $1, %edi        # stdout
+    movl    $message, %esi
+    movl    $14, %edx       # length
+    syscall
+
+    # exit 0
+    movl    $0, %edi
+    movl    $SYS_exit, %eax
+    syscall</code></pre>
+
+armv71:
+
+<pre class="avrasm">
+<code>message:
+    .ascii "Hello, world\012\000"
+
+    .text
+    .align 2
+    .global _start
+
+_start:
+    mov     r7, #4
+    mov     r0, #1
+    movw    r1, #:lower16:message
+    movt    r1, #:upper16:message
+    movl    r2, #14
+    svc     0x0
+
+    # exit 0
+    mov     r7, #1
+    mov     r0, #0
+    svc     0x0</code></pre>
+
+Для компиляции
+<pre class="bash"><code>$ gcc -c -o hello.o hello.S
+$ ld -o hello hello.o</code></pre>
+                </p>
+            </div>
+        </div>
+        <!-- /blog-main -->
+
+        <div class="col-sm-3 col-sm-offset-1 blog-sidebar">
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h4 class="panel-title" style="font-size: 18px">Архив</h4>
+                </div>
+                <div class="panel-body">
+                    <ol class="list-unstyled">
+                      <li><a href="#">Январь 2014</a></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="sidebar-module well">
+                <h4>Мой профиль</h4>
+                <ol class="list-unstyled">
+                  <li><a href="https://plus.google.com/+AlexanderVerbitsky">G+</a></li>
+                  <li><a href="https://github.com/habibutsu">GitHub</a></li>
+                  <li><a href="#">Linkedin</a></li>
+                </ol>
+            </div>
+
+        </div><!-- /.blog-sidebar -->
+
+    </div><!-- /.row -->
+
+    </div> <!-- /container -->
+</body>
+</html>

@@ -37,6 +37,7 @@
         ga('create', 'UA-51121455-1', 'habibutsu.github.io');
         ga('send', 'pageview');
     </script>
+
 </head>
 
 <body role="document">
@@ -56,6 +57,14 @@
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li class="active"><a href="#">Главная</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Заметки<b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="linux_syscall.html">Системный вызов в Linux</a></li>
+                    <li class="dropdown-header">Модель памяти</li>
+                    <li><a href="git_help.html">Шпаргалка по Git</a></li>
+                </ul>
+            </li>
             <li><a href="slides.html">Слайды</a></li>
             <li><a href="#contact">Контакты</a></li>
           </ul>
@@ -65,13 +74,11 @@
 
     <div class="container theme-showcase" role="main">
 
-      <!-- Main jumbotron for a primary marketing message or call to action -->
-      <div class="jumbotron">
-        <h1>Hello, world!</h1>
-        <p>This is a template for a simple marketing or informational website. It includes a large callout called a jumbotron and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
-        <p><a href="#" class="btn btn-primary btn-lg" role="button">Learn more &raquo;</a></p>
-      </div>
-
+        <!-- Main jumbotron for a primary marketing message or call to action -->
+        <div class="jumbotron">
+            <h1>Привет, мир!</h1>
+            <p>Еще одни заметки, еще одного программиста.</p>
+        </div>
     </div> <!-- /container -->
 </body>
 </html>
