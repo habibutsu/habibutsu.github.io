@@ -72,13 +72,48 @@
       </div>
     </div>
 
-    <div class="container theme-showcase" role="main">
+    <div class="container" role="main">
 
         <!-- Main jumbotron for a primary marketing message or call to action -->
-        <div class="jumbotron">
+        <div class="well">
             <h1>Привет, мир!</h1>
             <p>Еще одни заметки, еще одного программиста.</p>
         </div>
-    </div> <!-- /container -->
+        <div class="well">
+        <!-- Example row of columns -->
+        <h2>Недавние заметки</h2>
+        <div class="row">
+            <div class="col-md-4">
+                <h3>Системный вызов Linux</h3>
+                <p>Небольшая справка по реализации системного вызова на разных платформах в Linux.</p>
+                <p>
+
+                    <button type="button" class="btn btn-xs btn-primary">syscall</button>
+                    <button type="button" class="btn btn-xs btn-primary">svc</button>
+                </p>
+                <p><a class="btn btn-default" href="linux_syscall.html" role="button">Подробнее &raquo;</a></p>
+            </div>
+            <div class="col-md-4">
+                <h3>Шпаргалка по Git</h3>
+                <p>Моя шпаргалка по командам Git. </p>
+                <p>
+                    <button type="button" class="btn btn-xs btn-primary">Git</button>
+                </p>
+                <p><a class="btn btn-default" href="git_help.html" role="button">Подробнее &raquo;</a></p>
+            </div>
+            <div class="col-md-4">
+                <h3>Модель памяти</h3>
+                <p>Краткое описание модели памяти в современных микропроцессорах и как она поддерживается в языках программирования.</p>
+                <p>
+                    <button type="button" class="btn btn-xs btn-primary">lock free</button>
+                    <button type="button" class="btn btn-xs btn-primary">C++</button>
+                    <button type="button" class="btn btn-xs btn-primary">Java</button>
+                    <button type="button" class="btn btn-xs btn-primary">D</button>
+                </p>
+                <p><a class="btn btn-default" href="#" role="button">Подробнее &raquo;</a></p>
+            </div>
+        </div>
+  </div>
+    </div> 
 </body>
 </html>
