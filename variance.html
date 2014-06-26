@@ -86,9 +86,10 @@
             <div class="blog-post">
 
 <img style="width:40%" src="static/illusion.jpg">
-<h2 class="blog-post-title">Ковариантность и контравариантность</h2>
+<h1 class="blog-post-title">Ковариантность и контравариантность</h1>
 <p class="blog-post-meta">Май 28, 2014 <a href="#">Habibutsu</a> <b style="color: red">(Черновик)</b></p>
-<h3>Содержание</h4>
+<h2>Содержание</h2>
+
 <ul>
     <li><a href="#introduction">Введение</a></li>
     <li><a href="#math">Математика</a></li>
@@ -98,17 +99,18 @@
         <li><a href="#java">Java</a></li>
         <li><a href="#java">C#</a></li>
         <li><a href="#java">С++</a></li>
+        <li><a href="#java">D</a></li>
         <li><a href="#java">Scala</a></li>
         <li><a href="#java">Haskell</a></li>
     </ul>
     <li><a href="#links">Ссылки</a></li>
 </ul>
 
-<h3 class="blog-post-title">Введение</h3>
+<h2 class="blog-post-title">Введение</h2>
 <p>
     С развитием компьютерной науки (Computer Science) именно как отдельной дисциплины она все больше начинает впитывать в себя терминов и определений из смежных областей (математика, логика и др.). <i>Ковариантность и контравариантность</i> - одно из таких понятий. В данной заметке в кратком виде приводится определение данных терминов с точки зрения математики, теории категорий и программирования.
 </p>
-<h3 class="blog-post-title">Математика</h3>
+<h2 class="blog-post-title">Математика</h2>
 <p>
 Определим три отображения для целых чисел:
 </p>
@@ -163,7 +165,7 @@
 </center>
 </p>
 
-<h3 class="blog-post-title">Теория категорий</h3>
+<h2 class="blog-post-title">Теория категорий</h2>
 <p>
     Взаимосвязь между теорией категорий и теорией типов можно выразить следующим образом [1]:
     <ul>
@@ -187,7 +189,7 @@
     Если f: a &rarr; a * a, тогда множество A = [1, 2] посредством f: A &rarr; B будет отображено в B = [1, 4], при этом PB = [[], [1], [4], [1, 4]] в случае если Pf = f<sup>-1</sup>: a &rarr; a * a будет отображено в PA = [[], [1], [2], [1, 2]]
 </p>
 
-<h3 class="blog-post-title">Программирование</h3>
+<h2 class="blog-post-title">Программирование</h2>
 
 <p>
     Для возможности рассуждать об отношении порядка между типами (тип/подтип) необходимо какое-то формальное правило. Такое правило было предложено Барбарой Лисков в 1987 году на конференции в основном докладе под названием "Абстракция данных и иерархия" <a href="#link6">[7]</a>.
@@ -222,7 +224,7 @@
 </p>
 <p>
 
-    Обычно ковариантность и контравариантность смешиваются в одном типе, например при определении типа произвольной функции которая является контравариантной по своим входным аргументам и ковариантной по своим выходным аргументам т.к. аргументы это нечо что требуется в то время как результат это нечто что предоставляется.
+    Обычно ковариантность и контравариантность смешиваются в одном типе, например для типа произвольной функции которая является контравариантной по своим входным аргументам и ковариантной по своим выходным аргументам т.к. аргументы это нечо что требуется в то время как результат это нечто что предоставляется.
 </p>
 <p>
     Еще одним важным следствием из вышеприведенных определений является то, что ковариантность типо-безопасна для операций чтения, а контравариантность для операций записи.
@@ -230,15 +232,24 @@
 <p>
     Чтобы все это уяснить, лучше обратиться к реальным примерам.
 </p>
-<h4>Java</h4>
+
+<h3>Java</h3>
+
 <p>
     Возьмем следующую иерархию типов:
-    <center>
-        <img class="img-thumbnail" src="static/type_hierarchy.png"><br>
-    </center>
 </p>
+<pre class="java"><code>class A {}
+
+class B extends A{}
+
+class C extends B {}
+
+class D extends C {}
+</code></pre>
+
 <p>
-    Т.к. массивы в Java решено было сделать ковариантными, то вместе с отношением тип <i>Rectangle</i> является подтипом <i>Shape</i>, вводится отношение тип <i>Array[Rectangle]</i> является подтипом <i>Array[Shape]</i>. Такой подход был обусловлен желанием разработчиков Java предоставить возможность реализовывать обобщенные функции (когда обобщенных типов еще не было в языке) в которые можно передавать произвольный ссылочный тип.
+    Т.к. массивы в Java решено было сделать ковариантными, то вместе с отношением тип <i>B</i> является подтипом <i>A</i>, вводится отношение тип <i>Array&lt;B&gt;</i> является подтипом <i>Array&lt;A&gt;</i>. Такой подход был обусловлен желанием разработчиков Java предоставить возможность реализовывать обобщенные функции (когда обобщенных типов еще не было в языке) в которые можно передавать произвольный ссылочный тип.
+</p>
 
 <pre class="java"><code>public class TestArray {
     public static void main(String[] args){
@@ -257,9 +268,11 @@ string1
 string2
 string3
 </code></pre>
+
 <p>
-Однако это приводит к тому, что допускается не типо-безопасное присваивание и соответсвенно некорректное поведение на runtime:
-    <pre class="java"><code>public class TestArray {
+Однако это приводит к тому, что допускается не типо-безопасное присваивание и соответсвенно некорректное поведение на runtime (вспомните, что ковариантность типо-безопасна для операций чтения, а не записи):
+</p>
+<pre class="java"><code>public class TestArray {
     public static void main(String[] args){
         String[] strArray = new String[] {"string1", "string2", "string3"};
         Object[] objectArray;
@@ -272,26 +285,74 @@ $ java TestArray
 Exception in thread "main" java.lang.ArrayStoreException: java.lang.Integer
     at TestArray.main(TestArray.java:6)
 </code></pre>
+
+<p>
+    С появлением обощенных типов (generics), которые по умолчанию <i>инвариантны</i> необходимость в таком подходе отпала, но для обратной совместимости поведение было сохранено.
 </p>
 <p>
-    С появлением обощенных типов необходимость в таком подходе отпала, но для обратной совместимости поведение было сохранено.
+    Иногда, все-же, для увеличения гибкости есть необходимоть сделать коллекции ковариантными/котнравариантными. Java предоставляет такую возможность посредством специального вида типа с параметрами, называемого <i>ограниченным типом групповых символов</i> (wildcard-тип).
 </p>
+
+<h4>Ковариантность</h4>
 <p>
-    Чтобы объявить аргументы ковариантными в параметре типа можно использовать включевое слово <b>extends</b>
-<pre class="java"><code>public TestInterface covariant(List&lt;? extends TestInterface> ilist) {
-   return ilist.remove(0);
- }
-</code></pre>
+    Для объявления коллекции ковариантной можно использовать констркуцию <i>? extends</i>, однако в этом случае будут доступны только операции чтения, а при попытке вызова не типо-безопасных операций записи возникнет ошибка при компиляции. Например нельзя добавить елементы типа B т.к. коллекция может ссылаться на любой из подтипов типа А.
+</p>
+<pre class="java"><code>ArrayList&lt;? extends A&gt; arrayA_covariant;
+arrayA_covariant = arrayA;
+arrayA_covariant = arrayB;
+arrayA_covariant = arrayC;
+arrayA_covariant = arrayD;
 
-Чтобы объявить аргументы контрвариантными в параметре типа можно использовать включевое слово <b>super</b>
-<pre class="java"><code>public void contravariant(List&lt;? super TestClass> clist, TestClass c) {
-   clist.add(c);
-}
-</code></pre>
-<h4>C#</h4>
-<h4>C++</h4>
+A varA = arrayA_covariant.get(0);
 
-Ковариантность
+/*      
+//error: no suitable method found
+arrayA_covariant.add(new B());
+arrayA_covariant.add(new C());
+*/
+</code></pre>
+<p>
+    В результате можно реализовать какую-то обобщенную функцию не изменющую исходную коллекию (например вывод на экран всех елементов) для типа А, и использовать ее для елементов являющимися подтипами А  (B, C или D).
+
+</p>
+<h4>Контравариантность</h4>
+<p>
+    Для объявления коллекции контрвариантной можно использовать констркуцию <i>? super</i>, однако теперь будут доступны только операции записи, а при попытке вызова операций чтения возникнет ошибка при компиляции.
+</p>
+<pre class="java"><code>ArrayList&lt;? super C&gt; arrayC_contravariant;
+
+arrayC_contravariant = arrayA;
+arrayC_contravariant = arrayB;
+arrayC_contravariant = arrayC;
+// error: incompatible types:
+// arrayC_contravariant = arrayD;
+
+/*
+// error: no suitable method found
+arrayC_contravariant.add(new A());
+arrayC_contravariant.add(new B());
+*/
+arrayC_contravariant.add(new C());
+arrayC_contravariant.add(new D());
+
+/*
+// error: incompatible types
+A varA = arrayC_contravariant.get(0);
+B varB = arrayC_contravariant.get(0);
+C varC = arrayC_contravariant.get(0);
+D varD = arrayC_contravariant.get(0);
+*/
+</code></pre>
+<p>
+    Механизм объявления ко/контрвариатных отношений в Java иногда еще назвают PECS (produce-extens, consumer-super).
+</p>
+<h3>C#</h3>
+<p>
+    В C# нет аналога wildcard типов из Java
+</p>
+<h3>C++</h3>
+
+<h4>Ковариантность</h4>
 <pre class="c++"><code>class X {};
 class Y : public X {};
 class Z : public Y {};
@@ -311,7 +372,7 @@ foo.cc:12: error: invalid covariant return type for ‘virtual X* B::foo()'
 foo.cc:7: error:   overriding ‘virtual Y* A::foo()’
 </code></pre>
 
-Контравариантность
+<h4>Контравариантность</h4>
 <pre class="с++"><code>class X {};
 class Y : public X {};
 class Z : public Y {};
@@ -343,12 +404,21 @@ foo.cc:24: error: no matching function for call to ‘B::foo(Y&)’
 foo.cc:14: note: candidates are: virtual void B::foo(Z&)
 </code></pre>
 
-<h4>Scala</h4>
-<h4>Haskell</h4>
+<h2>Scala</h2>
 <p>
-    Любая функция является контравариантной по своим входным аргументам и ковариантной по своим выходным аргументам.
+    
 </p>
-<h3 class="blog-post-title">Ссылки</h3>
+<h2>Haskell</h2>
+<p>
+    В Haskell нет изменяемых типов, поэтому используется ковариантность.
+</p>
+<h2 class="blog-post-title">Заключение</h2>
+<p>
+    с любым произвольным типом можно работать 
+
+    В большинстве случаев программисту
+</p>
+<h2 class="blog-post-title">Ссылки</h2>
 <a name="links"></a>
 <p>
 <ul>
