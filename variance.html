@@ -99,7 +99,6 @@
         <li><a href="#java">Java</a></li>
         <li><a href="#java">C#</a></li>
         <li><a href="#java">С++</a></li>
-        <li><a href="#java">D</a></li>
         <li><a href="#java">Scala</a></li>
         <li><a href="#java">Haskell</a></li>
     </ul>
@@ -344,80 +343,188 @@ D varD = arrayC_contravariant.get(0);
 */
 </code></pre>
 <p>
-    Механизм объявления ко/контрвариатных отношений в Java иногда еще назвают PECS (produce-extens, consumer-super).
+    Механизм объявления ко/контрвариатных отношений в Java иногда еще назвают <i>PECS</i> (produce-extens, consumer-super). Тип предоставляющий данные (которые будут читаться) объявляется при помощи <i>&lt;? extends T&gt;</i>, а тип предназначенный для потребителя (который необходимо наполнить) объявляется при помощи <i>&lt;? super T&gt;</i>
+</p>
+<p>
+    В качестве реального примера можно рассмотреть упрощенную реализацию стека.
+</p>
+<pre class="java"><code>class Stack<T> {
+    private T[] elementData;
+
+    private int elementCount = 0;
+
+    private void ensureCapacityHelper(int minCapacity){
+        if (minCapacity - elementData.length > 0)
+            elementData = Arrays.copyOf(elementData, 2 * elementData.length);
+    }
+    public Stack(){
+        this(10);
+    }
+
+    @SuppressWarnings("unchecked")
+    public Stack(int initialCapacity){
+        elementData = (T[]) new Object[initialCapacity];
+    }
+
+    public T push(T item){
+        ensureCapacityHelper(elementCount + 1);
+        elementData[elementCount++] = item;
+        return item;
+    }
+
+    public T pop(){
+        T item;
+        if (elementCount == 0)
+            throw new EmptyStackException();
+        item = elementData[elementCount - 1];
+        elementCount--;
+        elementData[elementCount] = null;
+        return item;
+    }
+    /*
+    * Добавляем елементы из коллекции в стек.
+    * В качестве входного параметра можно передавать коллекции
+    * производных от T типов.
+    */
+    public void pushAll(Collection&lt;? extends T&gt; c) {
+        for(T item: c)
+            push(item);
+    }
+    /*
+    * Извлекаем елементы из стека в коллекцию.
+    * В качестве входного параметра можно передавать коллекции
+    * супертипов для Т.
+    */
+    public void popAll(Collection&lt;? super T&gt; c) {
+        while(elementCount > 0)
+            c.add(pop());
+    }
+}
+</code></pre>
+<p>
+    Пример использования:
+</p>
+<pre class="java"><code>Stack&lt;A> stackA = new Stack&lt;A>();
+ArrayList&lt;B> arrayB = new ArrayList&lt;B>();
+stackA.pushAll(arrayB);
+
+Stack&lt;C> stackC = new Stack&lt;C>();
+ArrayList&lt;A> arrayA = new ArrayList&lt;A>();
+stackC.popAll(arrayA);
+</code></pre>
+<p>
+    Ковариантность/контрвариантность также свойственна для иерархии наследования.
+</p>
+<p>Ковариантность:</p>
+<pre class="java"><code>class Super {
+  A getSomething(){}
+}
+class Sub extends Super {
+  B getSomething() {}
+}
+</code></pre>
+<p>Контрвариантность:</p>
+<pre class="java"><code>class Super{
+  void doSomething(B parameter)
+}
+class Sub extends Super{
+  void doSomething(A parameter)
+}
+</code></pre>
+<p>
+    Как видно из примеров ковариантность свойственна выходным параметрам, а контравариантность - входным.
 </p>
 <h3>C#</h3>
 <p>
-    В C# нет аналога wildcard типов из Java
+    В C# нет аналога wildcard типов из Java, однако с версии Visual C# 2010 ковариантность/контравариантность была добавлена в обобщенных интерфейсах и тпах делегатов.
 </p>
 <h3>C++</h3>
+<p>
+    В C++ нет обобщенных типов и как следствие параметрического полиморфизма (шаблонные типы представляют собой просто кодогенерацию). Основной вид полиморфизма - полиморфизм наследования.
 
+</p>
 <h4>Ковариантность</h4>
-<pre class="c++"><code>class X {};
-class Y : public X {};
-class Z : public Y {};
+<pre class="c++"><code>class A {};
+class B : public A {};
+class C : public B {};
 
-class A {
-public:
-  virtual Y *foo() { return new Y(); }
+class Super {
+    public:
+        virtual B *get_something() { return new B(); }
 };
 
-class B : public A {
-public:
-  virtual X *foo() { return new X(); }
+class Sub : public Super {
+    public:
+        // должны были вернуть елемента типа C, но вернули A
+        virtual A *get_something() { return new A(); }
 };
+
+int main(){
+    return 0;
+}
 </code></pre>
-<pre class="bash"><code>$ g++ -W -Wall -ansi -pedantic -c foo.cc
-foo.cc:12: error: invalid covariant return type for ‘virtual X* B::foo()'
-foo.cc:7: error:   overriding ‘virtual Y* A::foo()’
+<pre class="bash"><code>$ g++ -W -Wall -ansi -pedantic -c covariance.cpp
+covariance.cpp:12:20: error: invalid covariant return type for ‘virtual A* Sub::get_something()’
+covariance.cpp:7:20: error:   overriding ‘virtual B* Super::get_something()’
 </code></pre>
 
 <h4>Контравариантность</h4>
-<pre class="с++"><code>class X {};
-class Y : public X {};
-class Z : public Y {};
+<pre class="с++"><code>class A {};
+class B : public A {};
+class C : public B {};
 
-class A {
-public:
-  virtual void foo(Y &y) { }
+class Super {
+    public:
+        virtual void do_something(B &b) { }
 };
 
-class B : public A {
-public:
-  virtual void foo(Z &z) { }
+class Sub : public Super {
+    public:
+        // должен быть A, но сделали C
+        virtual void do_something(C &c) { }
 };
 
-
-int main() {
-  B b;
-  Y y;
-  Z z;
+int main(){
+    B b;
+    C c;
+    Sub sup_item;
   
-  b.foo(y);
-  b.foo(z);
-  return 0;
+    sup_item.do_something(b);
+    sup_item.do_something(c);
+    return 0;
 }
 </code></pre>
-<pre class="bash"><code>$ g++ -W -Wall -ansi -pedantic  foo.cc
-foo.cc: In function ‘int main()’:
-foo.cc:24: error: no matching function for call to ‘B::foo(Y&)’
-foo.cc:14: note: candidates are: virtual void B::foo(Z&)
+<pre class="bash"><code>$ g++ -W -Wall -ansi -pedantic -c contravariance.cpp
+contravariance.cpp: In function ‘int main()’:
+contravariance.cpp:20:28: error: no matching function for call to ‘Sub::do_something(B&)’
+contravariance.cpp:20:28: note: candidate is:
+contravariance.cpp:12:22: note: virtual void Sub::do_something(C&)
+contravariance.cpp:12:22: note:   no known conversion for argument 1 from ‘B’ to ‘C&’
 </code></pre>
 
 <h2>Scala</h2>
 <p>
-    
+    Scala имеет
 </p>
 <h2>Haskell</h2>
 <p>
-    В Haskell нет изменяемых типов, поэтому используется ковариантность.
+    В Haskell нет изменяемых значений, поэтому все типы ковариантны.
 </p>
-<h2 class="blog-post-title">Заключение</h2>
-<p>
-    с любым произвольным типом можно работать 
+<div class="alert alert-info">
+    <strong>Java</strong>
+    <p>
+    java version "1.8.0_05"<br>
+Java(TM) SE Runtime Environment (build 1.8.0_05-b13)<br>
+Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
+   </p>
+    <strong>GCC</strong>
+    <p>g++ (GCC) 4.7.2 20120921 (Red Hat 4.7.2-2)</p>
+    <strong>Mono</strong>
+    <p></p>
+    <strong>Scala</strong>
+    <p>Scala code runner version 2.11.1 -- Copyright 2002-2013, LAMP/EPFL</p>
+</div>
 
-    В большинстве случаев программисту
-</p>
 <h2 class="blog-post-title">Ссылки</h2>
 <a name="links"></a>
 <p>
