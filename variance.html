@@ -348,7 +348,7 @@ D varD = arrayC_contravariant.get(0);
 <p>
     В качестве реального примера можно рассмотреть упрощенную реализацию стека.
 </p>
-<pre class="java"><code>class Stack<T> {
+<pre class="java"><code>class Stack&lt;T&gt; {
     private T[] elementData;
 
     private int elementCount = 0;
@@ -417,18 +417,18 @@ stackC.popAll(arrayA);
 </p>
 <p>Ковариантность:</p>
 <pre class="java"><code>class Super {
-  A getSomething(){}
+    A getSomething(){}
 }
 class Sub extends Super {
-  B getSomething() {}
+    B getSomething() {}
 }
 </code></pre>
 <p>Контрвариантность:</p>
 <pre class="java"><code>class Super{
-  void doSomething(B parameter)
+    void doSomething(B parameter)
 }
 class Sub extends Super{
-  void doSomething(A parameter)
+    void doSomething(A parameter)
 }
 </code></pre>
 <p>
@@ -436,8 +436,52 @@ class Sub extends Super{
 </p>
 <h3>C#</h3>
 <p>
-    В C# нет аналога wildcard типов из Java, однако с версии Visual C# 2010 ковариантность/контравариантность была добавлена в обобщенных интерфейсах и тпах делегатов.
+    В C# нет аналога wildcard типов из Java, однако с версии Visual C# 2010 ковариантность/контравариантность была добавлена в обобщенных интерфейсах и тпах делегатов. Интерфейс IEnumerable является ковариантным.
 </p>
+<p>
+    Пример реализации стека на C#, аналогичный приведенному выше для Java:
+</p>
+<pre class="c#"><code>public class Stack&lt;T&gt;
+{
+    private T[] elementData;
+    private int elementCount = 0;
+
+    private void ensureCapacityHelper(int minCapacity){
+        if (minCapacity - elementData.Length > 0)
+            Array.Resize(ref elementData, elementData.Length * 2);
+    }
+
+    public Stack(int initialCapacity){
+        elementData = new T[initialCapacity];
+    }
+
+    public Stack(): this(10){
+    }
+
+    public T Push(T item){
+        ensureCapacityHelper(elementCount + 1);
+        elementData[elementCount++] = item;
+        return item;
+    }
+
+    public void pushAll (IEnumerable &lt;T&gt; enumerable)
+    {
+        foreach (T t in enumerable)
+        {
+            Push(t);
+        }
+    }
+}
+</code></pre>
+<p>
+    Использоваться может так:
+</p>
+<pre class="c#"><code>List&lt;B&gt; listB = new List&lt;B&gt;();
+
+Stack&lt;A&gt; stackA = new Stack&lt;A&gt;();
+stackA.pushAll(listB);
+</code></pre>
+
 <h3>C++</h3>
 <p>
     В C++ нет обобщенных типов и как следствие параметрического полиморфизма (шаблонные типы представляют собой просто кодогенерацию). Основной вид полиморфизма - полиморфизм наследования.
@@ -520,7 +564,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
     <strong>GCC</strong>
     <p>g++ (GCC) 4.7.2 20120921 (Red Hat 4.7.2-2)</p>
     <strong>Mono</strong>
-    <p></p>
+    <p>Mono C# compiler version 3.2.8.0</p>
     <strong>Scala</strong>
     <p>Scala code runner version 2.11.1 -- Copyright 2002-2013, LAMP/EPFL</p>
 </div>
@@ -578,6 +622,11 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
     <li>[11]
         <a href="http://ocharles.org.uk/blog/guest-posts/2013-12-21-24-days-of-hackage-contravariant.html">
             24 Days of Hackage: contravariant
+        </a>
+    </li>
+    <li>[12]
+        <a href="http://msdn.microsoft.com/en-us/library/ee207183.aspx">
+            Covariance and Contravariance (C# and Visual Basic)
         </a>
     </li>
 </ul>
