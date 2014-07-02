@@ -219,7 +219,7 @@
     </ul>
 </p>
 <p>
-    Другими словами при ковариантности иерархия наследования сохраняется в прямом направлении, при контравариантности она меняется на противоположное, а при инвариантности не определена.
+    При ковариантности иерархия наследования сохраняется в прямом направлении, при контравариантности она меняется на противоположное, а при инвариантности не определена.
 </p>
 <p>
 
@@ -404,10 +404,12 @@ D varD = arrayC_contravariant.get(0);
 <p>
     Пример использования:
 </p>
-<pre class="java"><code>Stack&lt;A> stackA = new Stack&lt;A>();
+<pre class="java"><code>// Ковариантность
+Stack&lt;A> stackA = new Stack&lt;A>();
 ArrayList&lt;B> arrayB = new ArrayList&lt;B>();
 stackA.pushAll(arrayB);
 
+// Контравариантность
 Stack&lt;C> stackC = new Stack&lt;C>();
 ArrayList&lt;A> arrayA = new ArrayList&lt;A>();
 stackC.popAll(arrayA);
@@ -436,8 +438,19 @@ class Sub extends Super{
 </p>
 <h3>C#</h3>
 <p>
-    В C# нет аналога wildcard типов из Java, однако с версии Visual C# 2010 ковариантность/контравариантность была добавлена в обобщенных интерфейсах и тпах делегатов. Интерфейс IEnumerable является ковариантным.
+    В C# нет аналога wildcard типов из Java, однако с версии Visual C# 2010 ковариантность/контравариантность была добавлена в обобщенных интерфейсах и типах делегатов. Интерфейс IEnumerable является ковариантным, а например IComparer контравариантным. <a href="#link12">[12]</a>
 </p>
+<p>
+    Пример того как можно определить ковариантный/контрвариантный интерфейсы:
+</p>
+<pre class="c#"><code>public interface ICovariant &lt;out T&gt;{
+    T Get();
+}
+
+public interface IContravariant &lt;in T&gt; {
+    void Add (T item);
+}
+</code></pre>
 <p>
     Пример реализации стека на C#, аналогичный приведенному выше для Java:
 </p>
@@ -464,6 +477,15 @@ class Sub extends Super{
         return item;
     }
 
+    public T Pop(){
+        if (elementCount == 0)
+            throw new InvalidOperationException ();
+        T item = elementData[elementCount - 1];
+        elementCount--;
+        elementData[elementCount] = default(T);
+        return item;
+    }
+
     public void pushAll (IEnumerable &lt;T&gt; enumerable)
     {
         foreach (T t in enumerable)
@@ -471,15 +493,33 @@ class Sub extends Super{
             Push(t);
         }
     }
+
+    public void ForEach (Action &lt;T&gt; action)
+    {
+        if (action == null)
+            throw new ArgumentNullException ("action");
+
+        while(elementCount > 0)
+            action(Pop());
+    }
 }
 </code></pre>
 <p>
-    Использоваться может так:
+    Из-за того что в C# ковариантными являются только некоторые интерфейсы и делегаты полностью воспроизвести поведение для метода popAll как в Java не получится, но можно реализовать ForEach который достанет все елементы и передаст их в делегат action. Использоваться может так:
 </p>
-<pre class="c#"><code>List&lt;B&gt; listB = new List&lt;B&gt;();
+<pre class="c#"><code>// Ковариантность
+List&lt;B&gt; listB = new List&lt;B&gt;();
 
 Stack&lt;A&gt; stackA = new Stack&lt;A&gt;();
 stackA.pushAll(listB);
+
+// Контравариантность
+List&lt;A&gt; listA = new List&lt;A&gt;();
+Stack&lt;C&gt; stackC = new Stack&lt;C&gt;();
+Action&lt;A&gt; PopTolistA = (Item) => { listA.Add(Item); };
+// PopTolistA предназначен для объектов типа А, но передаем как
+// делегат для объектов типа C
+stackC.ForEach(PopTolistA);
 </code></pre>
 
 <h3>C++</h3>
@@ -574,27 +614,27 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
 <p>
 <ul>
     <li>[1]
-        <a href="http://www.ams.org/journals/tran/1945-058-00/S0002-9947-1945-0013131-6/S0002-9947-1945-0013131-6.pdf">
+        <a name="link1" href="http://www.ams.org/journals/tran/1945-058-00/S0002-9947-1945-0013131-6/S0002-9947-1945-0013131-6.pdf">
             General theory of natural equivalences.
         </a>
     </li>
     <li>[2]
-        <a href="http://arxiv.org/abs/0903.0340">
+        <a name="link2" href="http://arxiv.org/abs/0903.0340">
             Physics, Topology, Logic and Computation: A Rosetta Stone (John C. Baez, Mike Stay)
         </a>
     </li>
     <li>[3]
-        <a href="http://category_theory.livejournal.com/12189.html">
+        <a name="link3" href="http://category_theory.livejournal.com/12189.html">
             Физика, топология, логика и теория вычислений: Розеттский камень (Дж. К. Баез, М. Стэй) - Перевод Р. Душкин
         </a>
     </li>
     <li>[4]
-        <a href="http://en.wikipedia.org/wiki/Category_theory">
+        <a name="link4" href="http://en.wikipedia.org/wiki/Category_theory">
             Category Theory - Wikipedia, the free encyclopedia
         </a>
     </li>
     <li>[5]
-        <a href="http://plato.stanford.edu/entries/category-theory/">
+        <a name="link5" href="http://plato.stanford.edu/entries/category-theory/">
             Category Theory - Stanford Encyclopedia of Philosophy
         </a>
     </li>
@@ -610,12 +650,12 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
         Категории для работающего математика - Сандерс Маклейн, 2004 г.
     </li>
     <li>[9]
-        <a href="http://www.cs.iastate.edu/~hridesh/teaching/362/07/01/papers/p50-liskov.pdf">
+        <a name="link9" href="http://www.cs.iastate.edu/~hridesh/teaching/362/07/01/papers/p50-liskov.pdf">
             Data abstraction and hierarchy - Liskov, Barbara
         </a>
     </li>
     <li>[10]
-        <a href="http://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)">
+        <a name="link10" href="http://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)">
             Covariance and contravariance (computer science) - Wikipedia
         </a>
     </li>
@@ -625,7 +665,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.5-b02, mixed mode)
         </a>
     </li>
     <li>[12]
-        <a href="http://msdn.microsoft.com/en-us/library/ee207183.aspx">
+        <a name="link12" href="http://msdn.microsoft.com/en-us/library/ee207183.aspx">
             Covariance and Contravariance (C# and Visual Basic)
         </a>
     </li>
