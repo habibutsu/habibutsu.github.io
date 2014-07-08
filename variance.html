@@ -588,12 +588,54 @@ contravariance.cpp:12:22: note:   no known conversion for argument 1 from ‘B�
 
 <h2>Scala</h2>
 <p>
-    Scala имеет
+    Scala обладает гораздо более широкой системой типов по сравнению с Java или C#.
+Определение фуункции с одним аргументом выглядит следующим образом:
 </p>
+<pre class="scala"><code>trait Function1[-T, +R] extends AnyRef {
+
+    def apply(arg1: T): R
+
+}
+</code></pre>
+<p>
+</p>
+<pre class="scala"><code>
+abstract class AbstractStackCovariant[+T]{
+    def pop(): T
+    
+    def push[U >: T](item: U)
+
+    def popAll[U >: T](collection: Array[U])
+
+    def pushAll[U >: T](collection: Iterable[U])
+}
+
+abstract class AbstractStackContravariant[-T]{
+    def pop[U &lt;: T](): U
+    
+    def push(item: T)
+
+    def popAll[U &lt;: T](collection: Array[U])
+
+    def pushAll[U &lt;: T](collection: Iterable[U])
+}
+
+abstract class AbstractStackInvariant[T]{
+    def pop(): T
+    
+    def push(item: T)
+
+    def popAll[U >: T](collection: Array[U])
+
+    def pushAll[U &lt;: T](collection: Iterable[U])
+}
+</code></pre>
 <h2>Haskell</h2>
 <p>
     В Haskell нет изменяемых значений, поэтому все типы ковариантны.
 </p>
+<h2>Заключение</h2>
+<p>Используемые версии компиляторов:</p>
 <div class="alert alert-info">
     <strong>Java</strong>
     <p>
