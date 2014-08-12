@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Habibutsu">
+
+    <title>Примитивы синхронизации</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <!-- Custom styles for this template -->
+    <link href="static/theme.css" rel="stylesheet">
+
+    <!-- Just for debugging purposes. Don't actually copy this line! -->
+    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <link rel="stylesheet" href="static/highlight/styles/solarized_dark.css">
+    <script src="static/highlight/highlight.pack.js"></script>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+        //hljs.configure({useBR: true});
+        $('div.code').each(function(i, e) {hljs.highlightBlock(e)});
+    </script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-51121455-1', 'habibutsu.github.io');
+        ga('send', 'pageview');
+    </script>
+</head>
+
+<body role="document">
+
+    <!-- Fixed navbar -->
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Alexander Verbitsky</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="index.html">Главная</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Заметки<b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="linux_syscall.html">Системный вызов в Linux</a></li>
+                    <li class="dropdown-header">Модель памяти</li>
+                    <li><a href="git_help.html">Шпаргалка по Git</a></li>
+                </ul>
+            </li>
+            <li><a href="slides.html">Слайды</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+    <div class="container theme-showcase" role="main">
+
+    <div class="row well">
+
+        <div class="col-sm-8 blog-main">
+            <div class="blog-post">
+
+<img src="static/synchronize.png">
+<h1 class="blog-post-title">Примитивы синхронизации</h1>
+<p class="blog-post-meta">Август 20, 2014 <a href="#">Habibutsu</a></p>
+<h2>Содержание</h2>
+
+<ul>
+    <li><a href="#introduction">Введение</a></li>
+    <li><a href="#volatile">volatile</a></li>
+    <li><a href="#futex">futex</a></li>
+    <li><a href="#semaphore">semaphore</a></li>
+    <li><a href="#semaphore">mutex</a></li>
+    <li><a href="#semaphore">mutex and conditional</a></li>
+    <li><a href="#semaphore">spin lock</a></li>
+</ul>
+
+<h2 class="blog-post-title">Введение</h2>
+
+
+<h2 class="blog-post-title">volatile</h2>
+<p>
+Квалификатор volatile сообщает компилятору, что выражение не нужно оптимизровать. Большинство компиляторов могут автоматически оптимизировать некоторые выражения если сочтут что значение выражения не изменяется и поэтому нет смысла перепроверять его при каждом обращении. Кроме того, компиляторы могут изменять порядок вычисления выражения при компиляции.
+</p>
+<p>
+Использование в качестве примитва синхронизации может являться безопасным только в том случае, если запись и чтение для выражения аннотированного данным кфалификатором производится атомарно.
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread volatile.c -o volatile 
+*/
+#include &lt;stdio.h&gt;
+#include &lt;pthread.h&gt;
+
+#define NUM 5
+
+volatile int is_started = 0;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    while(is_started == 0);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i; i &lt; 1000000; i++);
+
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    is_started = 1;
+
+    // wait to terminate
+    for(int i=0; i &lt; NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+<h2 class="blog-post-title">futex</h2>
+<p>
+    Futex - сокращение от англ. fast userspace mutex.
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread futex.c -o futex 
+*/
+#include &lt;stdio.h>
+#include &lt;&lt;pthread.h>
+#include &lt;linux/futex.h>
+#include &lt;syscall.h>
+
+#define NUM 5
+
+int is_started = 0;
+
+int futex_wait(int *uaddr, int val) {
+   return syscall(SYS_futex, uaddr, FUTEX_WAIT, val, NULL, NULL, 0);
+}
+
+int futex_wake(int *uaddr, int val) {
+   return syscall(SYS_futex, uaddr, FUTEX_WAKE, val, NULL, NULL, 0);
+}
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    futex_wait(&amp;is_started, 0);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i; i &lt; 100000000; i++);
+
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+
+    futex_wake(&amp;is_started, NUM);
+
+    // wait to terminate
+    for (int i=0; i&lt;NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">Semaphore</h2>
+<p>
+    Semaphore
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread semaphore.c -o semaphore 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+#include &lt;semaphore.h>
+
+#define NUM 5
+
+sem_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    sem_wait(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i=0; i &lt; 100000000; i++);
+
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    sem_init(&amp;is_started, 0, 0);
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    for(int i=0; i &lt; NUM; i++){
+        sem_post(&amp;is_started);
+    }
+
+    // wait to terminate
+    for(int i=0; i &lt; NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">mutex</h2>
+<p>
+    Mutex
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread mutex.c -o mutex 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+
+#define NUM 5
+
+pthread_mutex_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    pthread_mutex_lock(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i; i &lt; 100000000; i++);
+
+    pthread_mutex_unlock(&amp;is_started);
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    pthread_mutex_init(&amp;is_started, NULL);
+    pthread_mutex_lock(&amp;is_started);
+
+    for(int i=0; i&lt;NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    pthread_mutex_unlock(&amp;is_started);
+
+    // wait to terminate
+    for(int i=0; i&lt;NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">spin lock</h2>
+<p>
+
+</p>
+<pre class="c"><code>/*
+cc -std=gnu11 -pthread spin_lock.c -o spin_lock 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+
+#define NUM 5
+
+pthread_spinlock_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    pthread_spin_lock(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i = 0; i &lt; 1000000; i++);
+
+    pthread_spin_unlock(&amp;is_started);
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    pthread_spin_init(&amp;is_started, 0);
+    pthread_spin_lock(&amp;is_started);
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    pthread_spin_unlock(&amp;is_started);
+
+    // wait to terminate
+    for(int i=0; i&lt;NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    pthread_spin_destroy(&amp;is_started);
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">Ссылки</h2>
+<a name="links"></a>
+<p>
+<ul>
+    <li>[1]
+        <a name="link1" href="http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html">
+            Intel® 64 and IA-32 Architectures Software Developer Manuals
+        </a>
+    </li>
+</ul>
+http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/
+http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/
+</p>
+            </div>
+            <!-- /blog-post -->
+        </div>
+        <!-- /blog-main -->
+
+        <div class="col-sm-3 col-sm-offset-1 blog-sidebar">
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h4 class="panel-title" style="font-size: 18px">Архив</h4>
+                </div>
+                <div class="panel-body">
+                    <ol class="list-unstyled">
+                      <li><a href="#">Январь 2014</a></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="sidebar-module well">
+                <h4>Мой профиль</h4>
+                <ol class="list-unstyled">
+                  <li><a href="https://plus.google.com/+AlexanderVerbitsky">G+</a></li>
+                  <li><a href="https://github.com/habibutsu">GitHub</a></li>
+                  <li><a href="#">Linkedin</a></li>
+                </ol>
+            </div>
+
+        </div><!-- /.blog-sidebar -->
+
+    </div><!-- /.row -->
+
+    </div> <!-- /container -->
+</body>
+</html>
