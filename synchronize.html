@@ -93,11 +93,11 @@
 <ul>
     <li><a href="#introduction">Введение</a></li>
     <li><a href="#volatile">volatile</a></li>
-    <li><a href="#futex">futex</a></li>
-    <li><a href="#semaphore">semaphore</a></li>
-    <li><a href="#semaphore">mutex</a></li>
-    <li><a href="#semaphore">mutex and conditional</a></li>
-    <li><a href="#semaphore">spin lock</a></li>
+    <li><a href="#spin_lock">Спин блокировка (spin lock)</a></li>
+    <li><a href="#semaphore">Семафор (semaphore)</a></li>
+    <li><a href="#mutex">Мьютекс (mutex)</a></li>
+    <!-- <li><a href="#mutex_conditional">mutex and conditional</a></li>-->
+    <li><a href="#futex">Фьютекс (futex)</a></li>
 </ul>
 
 <h2 class="blog-post-title">Введение</h2>
@@ -153,9 +153,182 @@ int main(){
     return 0;
 }
 </code></pre>
-<h2 class="blog-post-title">futex</h2>
+
+
+<h2 class="blog-post-title">Спин блокировка (spin lock)</h2>
 <p>
-    Futex - сокращение от англ. fast userspace mutex.
+Спин-блокировка - циклическая блокировка или блокировка активного ожидания,
+основанная (аналогично приведенному выше примеру с volatile) на постоянном 
+тестировании переменной блокирования, до момента ее "освобождения". 
+</p>
+<p>
+Реализуется данный вид блокировки на основе атомарных операций в качестве
+которых выступают асемлерные инструкции имеющиеся у процессора, как например
+cmpxchg "сравнение с обменом" для x86.
+</p>
+<p>
+Основным достоинстовом и одновременно недостатком спин-блокировки является отсутствие переключения контекста выполнения, однако при этом происходит активное использование процессора что не всегда оправдано.
+</p>
+<pre class="c"><code>/*
+cc -g -std=gnu11 -pthread spin_lock.c -o spin_lock 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+
+#define NUM 5
+
+pthread_spinlock_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    pthread_spin_lock(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i = 0; i &lt; 1000000; i++);
+
+    pthread_spin_unlock(&amp;is_started);
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    pthread_spin_init(&amp;is_started, 0);
+    pthread_spin_lock(&amp;is_started);
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    pthread_spin_unlock(&amp;is_started);
+
+    // wait to terminate
+    for(int i=0; i&lt;NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    pthread_spin_destroy(&amp;is_started);
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">Семафор (semaphore)</h2>
+<p>
+    Семафор - объект, ограничивающий количество потоков, которые могут войти в заданный участок кода (определение введено Эдсгером Дейкстрой).
+</p>
+<p>
+На текущий момент реализуется на основе фьютекса.
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread semaphore.c -o semaphore 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+#include &lt;semaphore.h>
+
+#define NUM 5
+
+sem_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    sem_wait(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i=0; i &lt; 100000000; i++);
+
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    sem_init(&amp;is_started, 0, 0);
+
+    for(int i=0; i &lt; NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    for(int i=0; i &lt; NUM; i++){
+        sem_post(&amp;is_started);
+    }
+
+    // wait to terminate
+    for(int i=0; i &lt; NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">Мьютекс (mutex)</h2>
+<p>
+    Мьютекс (mutex, от mutual exclusion — "взаимное исключение")
+</p>
+<pre class="c"><code>/*
+cc -std=c11 -pthread mutex.c -o mutex 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+
+#define NUM 5
+
+pthread_mutex_t is_started;
+
+void* thread_function(void* num){
+    int thread_num = (int) num;
+
+    pthread_mutex_lock(&amp;is_started);
+
+    printf("Thread %d is started\n", thread_num);
+
+    for(int i; i &lt; 100000000; i++);
+
+    pthread_mutex_unlock(&amp;is_started);
+    return NULL;
+}
+
+int main(){
+    pthread_t threads[NUM];
+
+    pthread_mutex_init(&amp;is_started, NULL);
+    pthread_mutex_lock(&amp;is_started);
+
+    for(int i=0; i&lt;NUM; i++){
+        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
+    }
+
+    printf("Wait to start...\n");
+    sleep(1);
+
+    printf("Now go!\n");
+    pthread_mutex_unlock(&amp;is_started);
+
+    // wait to terminate
+    for(int i=0; i&lt;NUM; i++){
+        pthread_join(threads[i], NULL);
+    }
+
+    return 0;
+}
+</code></pre>
+
+<h2 class="blog-post-title">Фьютекс (futex)</h2>
+<p>
+    Фьютекс (futex - сокращение от англ. fast userspace mutex).
 </p>
 <pre class="c"><code>/*
 cc -std=c11 -pthread futex.c -o futex 
@@ -212,164 +385,6 @@ int main(){
 }
 </code></pre>
 
-<h2 class="blog-post-title">Semaphore</h2>
-<p>
-    Semaphore
-</p>
-<pre class="c"><code>/*
-cc -std=c11 -pthread semaphore.c -o semaphore 
-*/
-#include &lt;stdio.h>
-#include &lt;pthread.h>
-#include &lt;semaphore.h>
-
-#define NUM 5
-
-sem_t is_started;
-
-void* thread_function(void* num){
-    int thread_num = (int) num;
-
-    sem_wait(&amp;is_started);
-
-    printf("Thread %d is started\n", thread_num);
-
-    for(int i=0; i &lt; 100000000; i++);
-
-    return NULL;
-}
-
-int main(){
-    pthread_t threads[NUM];
-
-    sem_init(&amp;is_started, 0, 0);
-
-    for(int i=0; i &lt; NUM; i++){
-        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
-    }
-
-    printf("Wait to start...\n");
-    sleep(1);
-
-    printf("Now go!\n");
-    for(int i=0; i &lt; NUM; i++){
-        sem_post(&amp;is_started);
-    }
-
-    // wait to terminate
-    for(int i=0; i &lt; NUM; i++){
-        pthread_join(threads[i], NULL);
-    }
-
-    return 0;
-}
-</code></pre>
-
-<h2 class="blog-post-title">mutex</h2>
-<p>
-    Mutex
-</p>
-<pre class="c"><code>/*
-cc -std=c11 -pthread mutex.c -o mutex 
-*/
-#include &lt;stdio.h>
-#include &lt;pthread.h>
-
-#define NUM 5
-
-pthread_mutex_t is_started;
-
-void* thread_function(void* num){
-    int thread_num = (int) num;
-
-    pthread_mutex_lock(&amp;is_started);
-
-    printf("Thread %d is started\n", thread_num);
-
-    for(int i; i &lt; 100000000; i++);
-
-    pthread_mutex_unlock(&amp;is_started);
-    return NULL;
-}
-
-int main(){
-    pthread_t threads[NUM];
-
-    pthread_mutex_init(&amp;is_started, NULL);
-    pthread_mutex_lock(&amp;is_started);
-
-    for(int i=0; i&lt;NUM; i++){
-        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
-    }
-
-    printf("Wait to start...\n");
-    sleep(1);
-
-    printf("Now go!\n");
-    pthread_mutex_unlock(&amp;is_started);
-
-    // wait to terminate
-    for(int i=0; i&lt;NUM; i++){
-        pthread_join(threads[i], NULL);
-    }
-
-    return 0;
-}
-</code></pre>
-
-<h2 class="blog-post-title">spin lock</h2>
-<p>
-
-</p>
-<pre class="c"><code>/*
-cc -std=gnu11 -pthread spin_lock.c -o spin_lock 
-*/
-#include &lt;stdio.h>
-#include &lt;pthread.h>
-
-#define NUM 5
-
-pthread_spinlock_t is_started;
-
-void* thread_function(void* num){
-    int thread_num = (int) num;
-
-    pthread_spin_lock(&amp;is_started);
-
-    printf("Thread %d is started\n", thread_num);
-
-    for(int i = 0; i &lt; 1000000; i++);
-
-    pthread_spin_unlock(&amp;is_started);
-    return NULL;
-}
-
-int main(){
-    pthread_t threads[NUM];
-
-    pthread_spin_init(&amp;is_started, 0);
-    pthread_spin_lock(&amp;is_started);
-
-    for(int i=0; i &lt; NUM; i++){
-        pthread_create(&amp;threads[i], NULL, thread_function, (void *) i);
-    }
-
-    printf("Wait to start...\n");
-    sleep(1);
-
-    printf("Now go!\n");
-    pthread_spin_unlock(&amp;is_started);
-
-    // wait to terminate
-    for(int i=0; i&lt;NUM; i++){
-        pthread_join(threads[i], NULL);
-    }
-
-    pthread_spin_destroy(&amp;is_started);
-    return 0;
-}
-</code></pre>
-
 <h2 class="blog-post-title">Ссылки</h2>
 <a name="links"></a>
 <p>
@@ -379,9 +394,13 @@ int main(){
             Intel® 64 and IA-32 Architectures Software Developer Manuals
         </a>
     </li>
+    <li>
+        [2]
+        <a href="http://bartoszmilewski.com/2008/09/01/thin-lock-vs-futex/">
+            Thin Lock vs. Futex
+        </a>
+    </li>
 </ul>
-http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/
-http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/
 </p>
             </div>
             <!-- /blog-post -->
