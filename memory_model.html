@@ -87,12 +87,12 @@
 
 <img style="width:40%" src="static/cpu_micro.jpg">
 <h1 class="blog-post-title">Модель памяти</h1>
-<p class="blog-post-meta">Апрель 20, 2014 <a href="#">Habibutsu</a></p>
+<p class="blog-post-meta">Апрель 20, 2014 <a href="#">Habibutsu</a> <b>(Черновик)</b></p>
 <h2>Содержание</h2>
 
 <ul>
     <li><a href="#introduction">Введение</a></li>
-    <li><a href="#x86">Intel® 64 and IA-32 Architectures</a></li>
+    <li><a href="#reordering">Reordering</a></li>
     <li><a href="#links">Ссылки</a></li>
 </ul>
 
@@ -100,97 +100,216 @@
 <p>
 </p>
 
-<h2 class="blog-post-title">Intel® 64 and IA-32 Architectures</h2>
+<h2>Атомарность</h2>
 
-<h3>Reordering</h3>
+<h2>Порядок</h2>
 
+<p>
+Чтение может быть переупорядочено с ранее произведенной записью для различных ячеек памяти
+</p>
+
+<div class="panel panel-default" style="width: 400px">
+    <table class="table">
+        <thead>
+          <tr>
+            <th>Процессор 0</th>
+            <th>Процессор 1</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+                <pre class="asm"><code>mov [_x], 1
+mov r1, [_y]</code></pre>
+            </td>
+            <td><pre class="asm"><code>mov [_y], 1
+mov r2, [_x]</code></pre></td>
+          </tr>
+          <tr>
+            <td colspan="2">
+            Начальные значения: x = y = 0<br>
+            r1 = 0 и r2 = 0 разрешено
+            </td>
+          </tr>
+        </tbody>
+      </table>
+</div>
+<p>Однако переупорядочивание чтения с предидущей записью для одной ячейки памяти - запрещено.
+</p>
+<div class="panel panel-default" style="width: 400px">
+    <table class="table">
+        <thead>
+          <tr>
+            <th>Процессор 0</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+                <pre class="asm"><code>mov [_x], 1
+mov r1, [_x]</code></pre>
+          <tr>
+            <td>
+            Начальные значения: x = 0<br>
+            r1 = 0 запрещено
+            </td>
+          </tr>
+        </tbody>
+      </table>
+</div>
+
+<p>
+Предтвращение переупорядочивания компилятором
+</p>
+<pre class="c"><code>asm volatile("" ::: "memory");</code></pre>
 <p>
 Предотвращение переупорядочивания CPU
 </p>
 <pre class="c"><code>asm volatile("mfence" ::: "memory");</code></pre>
 <p>
-Предтвращение переупорядочивания компилятором
+    Пример
 </p>
-<pre class="c"><code>asm volatile("" ::: "memory");</code></pre>
+<pre class="c"><code>/*
+gcc -std=gnu11 -O2 -lpthread reordering.c -o reordering 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
 
+pthread_barrier_t barrier;
 
-<pre class="c"><code>#include&lt;stdio.h>
-#include&lt;stdlib.h>
-#include&lt;pthread.h>
-#include&lt;semaphore.h>
+volatile int X, Y;
+int r1, r2;
 
-int a, b, X, Y;
-sem_t sem_start1, sem_start2, sem_end;
-
-void *thread1_function(){
-    printf("Hello i am thread 1\n");
-    srand(time(NULL));
-    for(;;){
-        sem_wait(&sem_start1);
-        while(rand() % 8 != 0){}
-        X = 1;
-        asm volatile("" ::: "memory"); 
-        b = Y;
-        sem_post(&sem_end);
-    }
+void* threadA_function(void* arg)
+{
+    pthread_barrier_wait(&amp;barrier);
+    X = 1;
+    asm volatile("" ::: "memory"); // prevent compiler reordering
+    r1 = Y;
     return NULL;
 }
 
-void *thread2_function(){
-    printf("Hello i am thread 2\n");
-    srand(time(NULL));
-    for(;;){
-        sem_wait(&sem_start2);
-        while(rand() % 8 !=0 ){}
-        Y = 1;
-        asm volatile("" ::: "memory"); 
-        a = X;
-        sem_post(&sem_end);
-    }
+void* threadB_function(void* arg)
+{
+    pthread_barrier_wait(&amp;barrier);
+    Y = 1;
+    asm volatile("" ::: "memory"); // prevent compiler reordering
+    r2 = X;
     return NULL;
 }
 
+int main()
+{
+    pthread_t thrA, thrB;
 
-int main(){
-    pthread_t thread1, thread2;
-    int res1, res2;
-    int it;
+    for (int count=0; ; count++) {
+        
+        // initial state
+        X = Y = 0;
+        pthread_barrier_init(&amp;barrier, NULL, 2);
 
-    res1 = pthread_create(&thread1, NULL, thread1_function, NULL);
-    res2 = pthread_create(&thread2, NULL, thread2_function, NULL);
-    if(res1 || res2){
-        printf(
-            "Could not create threads res1 = %d, res2 = %d\n",
-            res1, res2);
-        return 1;
-    }
-    sem_init(&sem_start1, 0, 0);
-    sem_init(&sem_start2, 0, 0);
-    sem_init(&sem_end, 0, 0);
+        pthread_create(&amp;thrA, NULL, threadA_function, NULL);
+        pthread_create(&amp;thrB, NULL, threadB_function, NULL);
 
-    for(it=0;; it++){
-        X = 0;
-        Y = 0;
-        sem_post(&sem_start1);
-        sem_post(&sem_start2);
-        sem_wait(&sem_end);
-        sem_wait(&sem_end);
-        if(a == 0 && b == 0)
-        {
-            printf("reorders detected after %d iterations\n", it);
-        }
-        if(a == 0){
-            printf("a == 0\n");
-        }
-        if(b == 0){
-            printf("b == 0\n");
-        }
-    }
-    pthread_join(thread1, NULL);
-    pthread_join(thread2, NULL);
-    return 0;
+        pthread_join(thrA, NULL);
+        pthread_join(thrB, NULL);
+
+        if( (r1 == 0) &amp;&amp; (r2 == 0) ){
+            printf("%7u> r1=%d, r2=%d (X=%d, Y=%d)\n", count, r1, r2, X, Y);
+        } 
+   }
+   return 0;
 }
 </code></pre>
+<h2>Видимость</h2>
+
+<div class="panel panel-default" style="width: 400px">
+    <table class="table">
+        <thead>
+          <tr>
+            <th>Процессор 0</th>
+            <th>Процессор 1</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+                <pre class="asm"><code>mov [_x], 1
+mov r1, [_x]
+mov r2, [_y]</code></pre>
+            </td>
+            <td><pre class="asm"><code>mov [_y], 1
+mov r3, [_y]
+mov r4, [_x]</code></pre></td>
+          </tr>
+          <tr>
+            <td colspan="2">
+            Начальные значения: x = y = 0<br>
+            r2 = 0 и r4 = 0 разрешено
+            </td>
+          </tr>
+        </tbody>
+      </table>
+</div>
+<p>
+    Пример
+</p>
+<pre class="c"><code>/*
+gcc -std=gnu11 -O2 -lpthread visibility.c -o visibility 
+*/
+#include &lt;stdio.h>
+#include &lt;pthread.h>
+
+pthread_barrier_t barrier;
+
+volatile int X, Y;
+int r1, r2, r3, r4;
+
+void* threadA_function(void* arg)
+{
+    pthread_barrier_wait(&amp;barrier);
+    X = 1;
+    r1 = X;
+    r2 = Y;
+    return NULL;
+}
+
+void* threadB_function(void* arg)
+{
+    pthread_barrier_wait(&amp;barrier);
+    Y = 1;
+    r3 = Y;
+    r4 = X;
+    return NULL;
+}
+
+int main()
+{
+    pthread_t thrA, thrB;
+
+    for (int count=0; ; count++) {
+        
+        // initial state
+        X = Y = 0;
+        pthread_barrier_init(&amp;barrier, NULL, 2);
+
+        pthread_create(&amp;thrA, NULL, threadA_function, NULL);
+        pthread_create(&amp;thrB, NULL, threadB_function, NULL);
+
+        pthread_join(thrA, NULL);
+        pthread_join(thrB, NULL);
+
+        if((r2 == 0) &amp;&amp; (r4 == 0)){
+            printf("%7u> r2=%d, r4=%d (X=%d, Y=%d)\n", count, r2, r4, X, Y );
+        }
+   }
+   return 0;
+}
+</code></pre>
+<h2>Модель памяти в ЯП</h2>
+<h3>Синхронизируется с (synchronized with)</h3>
+<h3>Происходит раньше (happens before)</h3>
+
 <h2 class="blog-post-title">Ссылки</h2>
 <a name="links"></a>
 <p>
@@ -200,9 +319,22 @@ int main(){
             Intel® 64 and IA-32 Architectures Software Developer Manuals
         </a>
     </li>
+    <li>[2]
+        <a name="link1" href="http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">
+            Who ordered memory fences on an x86?
+        </a>
+    </li>
+    <li>[3]
+        <a name="link1" href="http://preshing.com/20120515/memory-reordering-caught-in-the-act/">
+            Memory Reordering Caught in the Act
+        </a>
+    </li>
+    <li>[4]
+        <a name="link1" href="http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/">
+            Mutex And Memory Visibility
+        </a>
+    </li>
 </ul>
-http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/
-http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/
 </p>
             </div>
             <!-- /blog-post -->
