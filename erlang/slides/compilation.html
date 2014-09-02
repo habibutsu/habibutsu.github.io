@@ -271,6 +271,16 @@ $ cat hello.S
 </article>
 
 <article class='nobackground smaller'>
+    <h3>BEAM</h3>
+
+    <p>Пример функции для декодирования beam-файла в исходный код</p>
+    <pre>decode_beam(BeamFile) ->
+    {ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks(BeamFile,[abstract_code]),
+    io:fwrite("~s~n", [erl_prettypr:format(erl_syntax:form_list(AC))]).
+    </pre>
+</article>
+
+<article class='nobackground smaller'>
     <h3>ERTS представление<h3>
     <pre>
 $ erl
