@@ -141,24 +141,82 @@
 <i>модель памяти</i> <a href="#link2">[2]</a>.
 </p>
 <p>
-    В зависимости от гарантий и разрешенных преобразований в рамках модели
-памяти различают слабую (ARM-архитектура) и сильную (x86 - аритектура) модели
-<a href="#link4">[4]</a>.
+    Следует различать аппаратную модель, которую предоставляет процессор (или
+аппаратная платформа) и программную, которую предоставляет компилятор для
+соответсвующего язка программирования. В рамках аппаратной модели можно выделить
+два подтипа - сильную и слабую модели. Основное отличие слабой модели от сильной
+состоит в отсутствие поддержки последовательно согласованных (выполняющихся
+последовательно) атомарных операций. Примером слабой аппаратной модели
+памяти является ARM-архитектура, а сильной - x86 <a href="#link4">[4]</a>.
 </p>
+<div class="alert alert-info">
+    Начиная с архитектуры ARMv8 были добавлены новые инструкции ldra и strl
+поддерживающие последовательно согласованное исполнение с семантикой
+захват/освобождение.
+</div>
 
 <h2>Модель памяти Intel® 64 and IA-32</h2>
 
 <p>
-    Прежде всего рассмотрим пример аппаратной модели памяти, которую
-предоставляет наиболее популярная архитектура x86.
+    В качестве примера аппаратной модели памяти возьмем наиболее популярную
+архитектуру x86 и рассмотрим три основных свойства: атомарность, порядок и видимость.
 </p>
-
 <h3>Атомарность</h3>
 
+
+<img style="float:right" src="static/atom.png"/>
 <p>
-    Под атомарнстью понимается блок операций выполняемых как единое целое.
+    Под атомарностью следует понимаеть блок операций (или одну операцию)
+выполняемых как единое целое и не допускающих никаких промежуточных значений
+тем самым гарантируя, что они либо были выполнены полностью, либо нет - 
+такие операции называют
+<a target="_blank" href="http://ru.wikipedia.org/wiki/Атомарная_операция">атомарными</a>.
 </p>
 
+<p>
+    Атомарные операции можно разделить на следующие виды: 
+</p>
+<ul>
+    <li>простые</li>
+        <ul>
+            <li>чтение</li>
+            <li>запись</li>
+        </ul>
+    <li>чтение-изменение-запись (<a target="_blank" href="http://en.wikipedia.org/wiki/Read-modify-write">read-modify-write, RMW</a>)
+        <ul>
+            <li>обмен</li>
+            <li>
+                проверить и установить
+                (<a target="_blank" href="http://en.wikipedia.org/wiki/Test-and-set">
+                    Test-and-set, TAS
+                </a>)
+            </li>
+            <li>
+                взять и добавить
+                (<a target="_blank" href="http://en.wikipedia.org/wiki/Fetch-and-add">
+                    Fetch-and-add, FAA
+                </a>)
+            </li>
+            <li>
+                сравнить и заменить
+                (<a target="_blank" href="http://en.wikipedia.org/wiki/Compare-and-swap">
+                    Compare-and-swap, CAS
+                </a>)
+            </li>
+            <li>
+                загрузить со связкой / сохранить при условии
+                (<a target="_blank" href="http://en.wikipedia.org/wiki/Load-link/store-conditional">
+                    Load-link/store-conditional, LL/SC
+                </a>)
+            </li>
+        </ul>
+    </li>
+</ul>
+<p>
+    Для выполнения атомарных операций процессор Intel с архитектурой IA-32
+предоставляет префикс блокировки шины - LOCK, для возможности определять
+какие инстуркции должны быть выполнены атомарно.
+</p>
 <h4>Префикс LOCK</h4>
 
 <p>
@@ -170,7 +228,7 @@
 <p>
 Префикс LOCK может предшествовать только со следующими инструкциями и только для тех их форм для
 которых операнд назначения является операндом в памяти: ADD, ADC, И, BTC, BTR, BTS, CMPXCHG, CMPXCH8B, 
-CMPXCHG16B, декабрь, INC, ОТР, NOT, OR, SBB, SUB, XOR, XADD, и XCHG. Если LOCK префикс используется с любой
+CMPXCHG16B, DEC, INC, ОТР, NOT, OR, SBB, SUB, XOR, XADD, и XCHG. Если LOCK префикс используется с любой
 из этих инструкций и операнд источника является операндом в памяти. может быть сгенерировано исключение (#UD).
 Это же исключение может быть с генерировано и в случае если LOCK префикс используется c инструкцией не из
 этого списка. Инструкция XCHG всегда производит блокировку шины, независимо от наличия префикса LOCK.
@@ -178,13 +236,13 @@ CMPXCHG16B, декабрь, INC, ОТР, NOT, OR, SBB, SUB, XOR, XADD, и XCHG. 
 
 </p>
 
-<h4>Инструкция XCHG</h4>
+<h4>Инструкция XCHG (Обменять)</h4>
 
 <p>
     Команда XCHG осуществляет обмен значений двух операндов. Операнды могут быть двумя регистрами общего назначения или регистром общего назначения и ячейкой памяти. Если используется операнд в памяти, то на время выполнения команды автоматически выставляется сигнал блокировки шины LOCK#, причем это делается независимо от наличия префикса блокировки и текущего значениия IOPL.
 </p>
 
-<h4>Инструкция CMPXCHG (Сравнить и заменить)</h4>
+<h4>Инструкция CMPXCHG (Сравнить и заменить, CAS)</h4>
 
 <p>
     Сравнивает значение регистров AL, AX, EAX или RAX c первым операндом (операнд назначения).
@@ -256,15 +314,17 @@ mov r1, [_x]</code></pre>
         </tbody>
       </table>
 </div>
-
-<p>
-Предтвращение переупорядочения компилятором
-</p>
-<pre class="c"><code>asm volatile("" ::: "memory");</code></pre>
-<p>
-Предотвращение переупорядочения CPU
-</p>
-<pre class="c"><code>asm volatile("mfence" ::: "memory");</code></pre>
+<div class="alert alert-info">
+    <p>
+        <strong>К сведению</strong> Предотвратить переупорядочивания в gcc можно выполнить следующим способом:
+    </p>
+    <p>
+        для компилятора:
+    <pre class="c"><code>asm volatile("" ::: "memory");</code></pre>
+        для процессора:
+    <pre class="c"><code>asm volatile("mfence" ::: "memory");</code></pre>
+    </p>
+</div>
 <p>
     Пример
 </p>
@@ -410,15 +470,18 @@ int main()
 
 <h3>Синхронизируется с (synchronized with)</h3>
 
-<p>
-    
-</p>
-
 <h3>Происходит раньше (happens before)</h3>
+
 
 <h2>Модель памяти С++</h2>
 
+
 <h2>Модель памяти Java</h2>
+
+
+<h2>Модель памяти Go</h2>
+
+
 <h2 class="blog-post-title">Ссылки</h2>
 <a name="links"></a>
 <p>
@@ -453,7 +516,18 @@ int main()
             Relaxed-Memory Concurrency
         </a>
     </li>
-    
+    <li>
+        [6]
+        <a name="link6" target="_blank" href="http://habrahabr.ru/company/ifree/blog/195948/">
+            Lock-free структуры данных. Основы: Атомарность и атомарные примитивы
+        </a>
+    </li>
+    <li>
+        [7]
+        <a name="link7" target="_blank" href="https://gcc.gnu.org/onlinedocs/gcc/Using-Assembly-Language-with-C.html#Using-Assembly-Language-with-C">
+            Using Assembly Language with C - Using the GNU Compiler Collection (GCC)
+        </a>
+    </li>
     <li>
         [?]
         <a name="link" target="_blank" href="http://www.codemaestro.com/reviews/8">
@@ -468,49 +542,49 @@ int main()
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">
+        <a name="link" target="_blank" href="http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">
             Who ordered memory fences on an x86?
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://bartoszmilewski.com/2008/12/01/c-atomics-and-memory-ordering/">
+        <a name="link" target="_blank" href="http://bartoszmilewski.com/2008/12/01/c-atomics-and-memory-ordering/">
             C++ atomics and memory ordering
         </a>
     </li>
     
 
     <li>[?]
-        <a name="link" href="http://preshing.com/20120515/memory-reordering-caught-in-the-act/">
+        <a name="link" target="_blank" href="http://preshing.com/20120515/memory-reordering-caught-in-the-act/">
             Memory Reordering Caught in the Act
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/">
+        <a name="link" target="_blank" href="http://www.domaigne.com/blog/computing/mutex-and-memory-visibility/">
             Mutex And Memory Visibility
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://books.google.by/books/about/%D0%9F%D0%B0%D1%80%D0%B0%D0%BB%D0%BB%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5_%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC.html?id=1UXRAAAAQBAJ">
+        <a name="link" target="_blank" href="http://books.google.by/books/about/%D0%9F%D0%B0%D1%80%D0%B0%D0%BB%D0%BB%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5_%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC.html?id=1UXRAAAAQBAJ">
             Параллельное программирование на C++ в действии - Энтони Уильямс
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://www.cs.umd.edu/~pugh/java/memoryModel/">
+        <a name="link" target="_blank" href="http://www.cs.umd.edu/~pugh/java/memoryModel/">
             The Java Memory Model
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html">
+        <a name="link" target="_blank" href="http://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html">
             JSR 133 (Java Memory Model) FAQ
         </a>
     </li>
     <li>[?]
-        <a name="link" href="http://habrahabr.ru/company/golovachcourses/blog/221133/">
+        <a name="link" target="_blank" href="http://habrahabr.ru/company/golovachcourses/blog/221133/">
             JSR 133 (Java Memory Model) FAQ (перевод) / Хабрахабр
         </a>
     </li>
     <li>[?]
-        <a name="link" href="https://golang.org/ref/mem">
+        <a name="link" target="_blank" href="https://golang.org/ref/mem">
             The Go Memory Model
         </a>
     </li>
