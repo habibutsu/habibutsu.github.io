@@ -94,8 +94,14 @@
     <li><a href="#introduction">Введение</a></li>
     <li><a href="#memory_model">Модель памяти Intel® 64 and IA-32</a></li>
     <ul>
+        <li><a href="#fence">Барьеры памяти</a></li>
         <li><a href="#memory_model">Атомарность</a></li>
-        <li><a href="#memory_model">Порядок</a></li>
+        <ul>
+            <li><a href="#prefix_lock">Префикс LOCK</a></li>
+            <li><a href="#instruction_xchg">Инструкция XCHG</a></li>
+            <li><a href="#instruction_cmpxchg">Инструкция CMPXCHG</a></li>
+        </ul>
+        <li><a href="#memory_order">Порядок</a></li>
         <li><a href="#memory_model">Видимость</a></li>
     </ul>
     <li><a href="#memory_model">Модель памяти ARMv8</a></li>
@@ -151,7 +157,7 @@
 соответсвующего язка программирования. В рамках аппаратной модели можно выделить
 два подтипа - сильную и слабую модели. Основное отличие слабой модели от сильной
 состоит в отсутствие поддержки последовательно согласованных (выполняющихся
-последовательно) атомарных операций. Примером слабой аппаратной модели
+последовательно) операций. Примером слабой аппаратной модели
 памяти является ARM-архитектура, а сильной - x86 <a href="#link4">[4]</a>.
 </p>
 <div class="alert alert-info">
@@ -159,7 +165,6 @@
 поддерживающие последовательно согласованное исполнение с семантикой
 захват/освобождение [<a href="#link5">5</a>, <a href="#link6">6</a>].
 </div>
-
 
 <img style="float:right" src="static/atom.png"/>
 <p>
@@ -215,9 +220,109 @@
 <h2>Модель памяти Intel® 64 and IA-32</h2>
 
 <p>
-    Данная архитектура является кэш-когерентной с сильной моделью памяти.
-Ррассмотрим три основных свойства: атомарность, порядок и видимость.
+    Архитектура IA-32 и 64 предоставляет несколько механизмов по усилению либо
+ослаблению модели упорядочивания доступа к памяти (memory ordering) для
+обработки специальных программных ситуаций.
+Эти механизмы включают <a href="#link10">[10]</a> (8.2.5 Strengthening or Weakening the Memory-Ordering Model):
+    <ul>
+        <li>I/O инструкции, блокирующие инструкции, LOCK префикс и
+инструкции сериализации принудительно задающие сильный порядок в процессоре.</li>
+        <li>SFENCE инструкция (введенныее в IA-32 архитектуру в процессоре Pentium III),
+LFENCE и MFENCE инструкции (введенные в процессоре Pentium 4) предоставляющие
+упорядченность памяти и возможность сериализации для конкретных видов операций с памятью.</li>
+        <li>Диапазонные регистры типа памяти (<a href="https://ru.wikipedia.org/wiki/MTRR">MTRRs</a>)
+которые могут быть использованы для усиления или ослабления упорядочивания (memory ordering)
+для конкретных областей физической памяти. MTRRs доступны только в процессорах Pentium 4,
+Intel Xeon и семействе P6.
+        </li>
+        <li>Таблица атрибутов страницы (<a href="http://en.wikipedia.org/wiki/Page_attribute_table">PAT</a>)
+может быть использована для усиления упорядочивания (memory ordering) для
+конкретны страниц или групп страниц. PAT доступна только в процессорах Pentium 4, Intel Xeon и Pentium III.
+        </li>
+    </ul>
 </p>
+
+<h3>Барьеры памяти</h3>
+
+<p>
+    <a href="http://en.wikipedia.org/wiki/Memory_barrier">Барьеры памяти</a> - один из механизмов, позволяющий избежать изменения
+семантики программы при разделении данных между потоками
+The SFENCE, LFENCE, and MFENCE instructions provide a performance-efficient way of ensuring load and store
+memory ordering between routines that produce weakly-ordered results and routines that consume that data.
+Note that the SFENCE, LFENCE, and MFENCE instructions provide a more efficient method of controlling memory
+ordering than the CPUID instruction.
+</p>
+
+<h4>Инструкция SFENCE</h4>
+
+<p>
+Performs a serializing operation on all store-to-memory instructions that were issued prior the SFENCE instruction.
+This serializing operation guarantees that every store instruction that precedes the SFENCE instruction in program
+order becomes globally visible before any store instruction that follows the SFENCE instruction. The SFENCE
+instruction is ordered with respect to store instructions, other SFENCE instructions, any LFENCE and MFENCE
+instructions, and any serializing instructions (such as the CPUID instruction). It is not ordered with respect to load
+instructions.
+Weakly ordered memory types can be used to achieve higher processor performance through such techniques as
+out-of-order issue, write-combining, and write-collapsing. The degree to which a consumer of data recognizes or
+knows that the data is weakly ordered varies among applications and may be unknown to the producer of this data.
+The SFENCE instruction provides a performance-efficient way of ensuring store ordering between routines that
+produce weakly-ordered results and routines that consume this data.
+This instruction’s operation is the same in non-64-bit modes and 64-bit mode.
+Specification of the instruction's opcode above indicates a ModR/M byte of F8. For this instruction, the processor
+ignores the r/m field of the ModR/M byte. Thus, SFENCE is encoded by any opcode of the form 0F AE Fx, where x
+is in the range 8-F.
+
+</p>
+
+<h4>Инструкция LFENCE</h4>
+<p>
+Performs a serializing operation on all load-from-memory instructions that were issued prior the LFENCE instruc-
+tion. Specifically, LFENCE does not execute until all prior instructions have completed locally, and no later instruc-
+tion begins execution until LFENCE completes. In particular, an instruction that loads from memory and that
+precedes an LFENCE receives data from memory prior to completion of the LFENCE. (An LFENCE that follows an
+instruction that stores to memory might complete before the data being stored have become globally visible.)
+Instructions following an LFENCE may be fetched from memory before the LFENCE, but they will not execute until
+the LFENCE completes.
+Weakly ordered memory types can be used to achieve higher processor performance through such techniques as
+out-of-order issue and speculative reads. The degree to which a consumer of data recognizes or knows that the
+data is weakly ordered varies among applications and may be unknown to the producer of this data. The LFENCE
+instruction provides a performance-efficient way of ensuring load ordering between routines that produce weakly-
+ordered results and routines that consume that data.
+Processors are free to fetch and cache data speculatively from regions of system memory that use the WB, WC,
+and WT memory types. This speculative fetching can occur at any time and is not tied to instruction execution.
+Thus, it is not ordered with respect to executions of the LFENCE instruction; data can be brought into the caches
+speculatively just before, during, or after the execution of an LFENCE instruction.
+This instruction’s operation is the same in non-64-bit modes and 64-bit mode.
+Specification of the instruction's opcode above indicates a ModR/M byte of E8. For this instruction, the processor
+ignores the r/m field of the ModR/M byte. Thus, LFENCE is encoded by any opcode of the form 0F AE Ex, where x is
+in the range 8-F.
+
+</p>
+
+<h4>Инструкция MFENCE</h4>
+<p>
+Performs a serializing operation on all load-from-memory and store-to-memory instructions that were issued prior
+the MFENCE instruction. This serializing operation guarantees that every load and store instruction that precedes
+the MFENCE instruction in program order becomes globally visible before any load or store instruction that follows
+the MFENCE instruction.1 The MFENCE instruction is ordered with respect to all load and store instructions, other
+MFENCE instructions, any LFENCE and SFENCE instructions, and any serializing instructions (such as the CPUID
+instruction). MFENCE does not serialize the instruction stream.
+Weakly ordered memory types can be used to achieve higher processor performance through such techniques as
+out-of-order issue, speculative reads, write-combining, and write-collapsing. The degree to which a consumer of
+data recognizes or knows that the data is weakly ordered varies among applications and may be unknown to the
+producer of this data. The MFENCE instruction provides a performance-efficient way of ensuring load and store
+ordering between routines that produce weakly-ordered results and routines that consume that data.
+Processors are free to fetch and cache data speculatively from regions of system memory that use the WB, WC,
+and WT memory types. This speculative fetching can occur at any time and is not tied to instruction execution.
+Thus, it is not ordered with respect to executions of the MFENCE instruction; data can be brought into the caches
+speculatively just before, during, or after the execution of an MFENCE instruction.
+This instruction’s operation is the same in non-64-bit modes and 64-bit mode.
+Specification of the instruction's opcode above indicates a ModR/M byte of F0. For this instruction, the processor
+ignores the r/m field of the ModR/M byte. Thus, MFENCE is encoded by any opcode of the form 0F AE Fx, where x
+is in the range 0-7.
+
+</p>
+
 <h3>Атомарность</h3>
 
 <p>
@@ -225,6 +330,7 @@
 задать какие инстуркции должны быть выполнены атомарно.
 </p>
 
+<a name="prefix_lock"></a>
 <h4>Префикс LOCK</h4>
 
 <p>
@@ -244,12 +350,14 @@ CMPXCHG16B, DEC, INC, ОТР, NOT, OR, SBB, SUB, XOR, XADD, и XCHG. Если LO
 
 </p>
 
+<a name="instruction_xchg"></a>
 <h4>Инструкция XCHG (Обменять)</h4>
 
 <p>
     Команда XCHG осуществляет обмен значений двух операндов. Операнды могут быть двумя регистрами общего назначения или регистром общего назначения и ячейкой памяти. Если используется операнд в памяти, то на время выполнения команды автоматически выставляется сигнал блокировки шины LOCK#, причем это делается независимо от наличия префикса блокировки и текущего значениия IOPL.
 </p>
 
+<a name="instruction_cmpxchg"></a>
 <h4>Инструкция CMPXCHG (Сравнить и заменить, CAS)</h4>
 
 <p>
@@ -336,6 +444,7 @@ mov r1, [_x]</code></pre>
 <p>
     Пример
 </p>
+
 <pre class="c"><code>/*
 gcc -std=gnu11 -O2 -lpthread reordering.c -o reordering 
 */
@@ -388,7 +497,8 @@ int main()
    return 0;
 }
 </code></pre>
-<h2>Видимость</h2>
+
+<h3>Видимость</h3>
 
 <div class="panel panel-default" style="width: 400px">
     <table class="table">
@@ -483,7 +593,13 @@ int main()
 
 <h2>Модель памяти С++</h2>
 
-
+<p>
+<ul>
+    <li>последовательно согласованная (sequential consistency)</li>
+    <li>семантика завхват/освобожение (acquire/release)</li>
+    <li>слабый порядок (relaxed memory ordering)</li>
+</ul>
+</p>
 <h2>Модель памяти Java</h2>
 
 
@@ -549,19 +665,28 @@ int main()
         </a>
     </li>
     
+    <li>[10]
+        <a name="link10" target="_blank" href="http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html">
+            Intel® 64 and IA-32 Architectures Software Developer Manuals
+        </a>
+    </li>
+    <li>[11]
+        <a name="link11" target="_blank" href="http://irl.cs.ucla.edu/~yingdi/web/paperreading/whymb.2010.06.07c.pdf">
+            Memory Barriers: a Hardware View of Software Hackers
+        </a>
+    </li>
+    <li>[12]
+        <a name="link10" target="_blank" href="https://www.kernel.org/doc/Documentation/memory-barriers.txt">
+            Linux kernel memory barrier
+        </a>
+    </li>
     <li>
         [?]
         <a name="link" target="_blank" href="http://www.codemaestro.com/reviews/8">
             Fast Atomic Counters With The X86 LOCK Prefix
         </a>
     </li>
-    
 
-    <li>[?]
-        <a name="link" target="_blank" href="http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html">
-            Intel® 64 and IA-32 Architectures Software Developer Manuals
-        </a>
-    </li>
     <li>[?]
         <a name="link" target="_blank" href="http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">
             Who ordered memory fences on an x86?
