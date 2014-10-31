@@ -86,29 +86,42 @@
             <div class="blog-post">
                 <h2 class="blog-post-title">Шпаргалка по Git</h2>
                 <p class="blog-post-meta">Май 21, 2014 <a href="#">Habibutsu</a></p>
+                <h3>Работа с ветками</h3>
                 <p>
-                    <h4>Удалить бранч</h4>
-                    <pre class="bash"><code>$ git branch -d <имя бранча></code></pre>
+                    <h4>Удалить ветку</h4>
+                    <pre class="bash"><code>$ git branch -d &lt;имя ветки></code></pre>
 
-                    <h4>Удалить бранч на сервере</h4>
-                    <pre class="bash"><code>$ git push origin --delete <имя бранча></code></pre>
+                    <h4>Удалить ветку на сервере</h4>
+                    <pre class="bash"><code>$ git push origin --delete &lt;имя ветки></code></pre>
 
-                    <h4>Создать бранч</h4>
-                    <pre class="bash"><code>$ git branch <имя бранча></code></pre>
+                    <h4>Создать ветку</h4>
+                    <pre class="bash"><code>$ git branch &lt;имя ветки></code></pre>
 
-                    <h4>Переключиться в бранч</h4>
-                    <pre class="bash"><code>$ git checkout <имя бранча></code></pre>
+                    <h4>Переключиться в ветку</h4>
+                    <pre class="bash"><code>$ git checkout &lt;имя ветки></code></pre>
 
-                    <h4>Создать бранч и переключиться в него</h4>
-                    <pre class="bash"><code>$ git checkout -b <имя бранча></code></pre>
+                    <h4>Создать ветку и переключиться в нее</h4>
+                    <pre class="bash"><code>$ git checkout -b &lt;имя ветки></code></pre>
 
-                    <h4>Отправить бранч на сервер</h4>
-                    <pre class="bash"><code>$ git push -u origin <имя бранча на сервере></code></pre>
+                    <h4>Отправить ветку на сервер</h4>
+                    <pre class="bash"><code>$ git push -u origin &lt;имя ветки на сервере></code></pre>
 
-                    <h4>Просмотреть все существующие ветви</4>
+                    <h4>Просмотреть все существующие ветви</h4>
                     <pre class="bash"><code>git branch -a</code></pre>
 
-                    <h4>Отменить мердж</h4>
+                    <h4>Просмотреть все существующие ветви</h4>
+                    <pre class="bash"><code>git branch -m &lt;старое имя ветки> &lt;новое имя ветки></code></pre>
+                </p>
+                <h3>Тэги</h3>
+                <p>
+                    <h4>Список тэгов с комментарием</h4>
+                    <pre class="bash"><code>$ git tag -n</code></pre>
+                    <h4>Создание тэга</h4>
+                    <pre class="bash"><code>$ git tag -a &lt;имя тэга> -m "Комментарий"</code></pre>
+                </p>
+                <h3>Слияние</h3>
+                <p>
+                    <h4>Отменить слияние</h4>
                     <pre class="bash"><code>$ git merge --abort</code></pre>
 
                     <h4>Отменить последний комит</h4>
