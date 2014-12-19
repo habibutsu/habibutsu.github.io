@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<!--
+  Google HTML5 slide template
+
+  Authors: Luke Mahé (code)
+           Marcin Wichary (code and design)
+           
+           Dominic Mazzoni (browser compatibility)
+           Charles Chen (ChromeVox support)
+
+  URL: http://code.google.com/p/html5slides/
+-->
+<html>
+<head>
+    <title>Erlang - библиотека erlmonads</title>
+    <meta charset='utf-8'>
+    <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
+
+</head>
+<style>
+    /* Your individual styles here, or just use inline styles if that’s
+       what you want. */
+    
+</style>
+<body style='display: none'>
+
+<section class='slides layout-regular template-default'>
+
+<article class='nobackground'>
+    <h1>Erlang</h1>
+    <h4>библиотека erlmonads</h4>
+    <img style="left: 70%; top: 30%; position: absolute;" src="http://www.erlang.org/doc/erlang-logo.png">
+</article>
+
+<article class='nobackground'>
+    <h3>Введение</h3>
+    <ul>
+        <li>Реализация do-нотации, монад</li>
+        <li>Идея из Haskell из-за</li>
+            <ul>
+                <li>Стратегия <i>вызова по имени</i></li>
+                <li>Чистый</li>
+            </ul>
+        <li>Fork of erlando (https://github.com/rabbitmq/erlando)</li>
+    </ul>
+</article>
+
+<article class='nobackground'>
+    <h3>do-нотация</h3>
+    <p>Программная запятая</p>
+<pre>
+    <code>
+    do([Monad ||
+        A &lt;- foo(),
+        B &lt;- bar(A, dog),
+        B
+    ]).
+</code></pre>
+
+<pre><code>
+    Monad:'>>='(
+        foo(),
+        fun (A) -> Monad:'>>='(
+            bar(A, dog),
+            fun (B) -> B end)
+        end).
+</code></pre>
+
+</article>
+
+<article class='nobackground'>
+    <h3>do-нотация (Haskell)</h3>
+<pre>
+    <code>
+    do
+        a &lt;- foo
+        b &lt;- bar a dog
+    </code>
+</pre>
+<pre>
+    <code>
+    foo >>= \a ->
+        bar a dog >>= \b -> b
+    </code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Maybe</h3>
+</article>
+
+<article class='nobackground'>
+    <h3>Error</h3>
+
+</article>
+
+<article class='nobackground'>
+    <h3>State монада</h3>
+    <p>Пример реализации вычисления факториала</p>
+<pre>
+<code>
+fact_rec(0) ->
+    do([erlmonads_state ||
+        Acc &lt;- get(),
+        return(Acc)
+    ]);
+fact_rec(N) ->
+    do([erlmonads_state ||
+        Acc &lt;- get(),
+        put(Acc * N),
+        fact_rec(N - 1)
+    ]).
+
+fact(N) ->
+    erlmonads_state:eval(
+        fact_rec(N),
+        1
+    ).
+</code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>State монада (Haskell)</h3>
+    <p>Пример реализации вычисления факториала</p>
+<pre>
+<code>
+fact_rec :: Int -> State Int Int
+fact_rec 0 = do
+    acc &lt;- get
+    return acc
+fact_rec n = do
+    acc &lt;- get
+    put (acc * n)
+    fact_rec (n - 1)
+</code>
+</pre>
+</article>
+<article class='nobackground'>
+    <h3>State монада</h3>
+    <p>Пример реализации вычисления чисел фибоначи</p>
+<pre>
+<code>
+-import(erlmonads_state, [
+    eval/2, modify/1,
+    sequence/1, exec/2
+]).
+
+fib_m_step() ->
+    modify(fun ({X, Y}) -> {Y, X+Y} end).
+
+fib(N) ->
+    {A, _} = exec(
+        sequence(
+            lists:duplicate(N, fib_m_step())
+        ),
+        {0, 1}
+    ),
+    A.
+</code></pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Трансформеры</h3>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>Ссылки</h3>
+    <ul>
+        <li>
+            <a href="https://github.com/habibutsu/erlmonads">
+            Fork me on github (https://github.com/habibutsu/erlmonads)
+            </a>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

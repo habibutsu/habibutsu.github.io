@@ -1,0 +1,10 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pz ./../erlmonads/ebin ./ebin
+
+main(_) ->
+    io:format("Factorial:~n"),
+    io:format("fact(6) = ~w~n", [factorial:fact(6)]),
+    io:format("Fibonacci:~n"),
+    io:format("fib(7) = ~w~n", [fibonacci:fib(7)]),
+    ok.
