@@ -47,23 +47,22 @@
 
 <article class='nobackground'>
     <h3>do-нотация</h3>
-    <p>Программная запятая</p>
+    <p>Программная запятая через parse_transform</p>
 <pre>
-    <code>
-    do([Monad ||
-        A &lt;- foo(),
-        B &lt;- bar(A, dog),
-        B
-    ]).
+<code>do([Monad ||
+    A &lt;- foo(),
+    B &lt;- bar(A, dog),
+    B
+]).
 </code></pre>
 
-<pre><code>
-    Monad:'>>='(
-        foo(),
-        fun (A) -> Monad:'>>='(
-            bar(A, dog),
-            fun (B) -> B end)
-        end).
+<pre>
+<code>Monad:'>>='(
+    foo(),
+    fun (A) -> Monad:'>>='(
+        bar(A, dog),
+        fun (B) -> B end)
+    end).
 </code></pre>
 
 </article>
@@ -87,19 +86,68 @@
 
 <article class='nobackground'>
     <h3>Maybe</h3>
+<pre>
+<code>return(X) -> {just, X}.
+fail(_X)  -> nothing.
+</code>
+</pre>
+<pre>
+<code>do([erlmonads_maybe ||
+    Num &lt;- get_number(),
+    erlmonads_plus:guard(erlmonads_maybe, is_number(Num)),
+    processing_number(Num),
+    return(Num)
+])
+</code></pre>
 </article>
 
 <article class='nobackground'>
     <h3>Error</h3>
+    <p>Варианты обработки ошибов</p>
+    <ul>
+        <li>Patter matching в аргументах функции</li>
+        <li>Вложенные case-ы</li>
+        <li>Исключения</li>
+    </ul>
+</article>
 
+<article class='nobackground'>
+    <h3>Error</h3>
+<pre style="font-size: 16px; line-height: 20px;">
+<code>ErrGuard = erlmonads_plus:guard(erlmonads_error, _, _),
+
+Res = do([erlmonads_error||
+    Connection &lt;- amqp_connection:start(AMQP_params),
+    Channel &lt;- amqp_connection:open_channel(Connection),
+    ConnectionRef &lt;- return(erlang:monitor(process, Connection)),
+    ChannelRef &lt;- return(erlang:monitor(process, Channel)),
+    ErrGuard(
+        'exchange.declare_ok' =:= element(1, amqp_channel:call(Channel, EDeclareCmd)),
+        "Could not declare exchange"),
+    ErrGuard(
+        'queue.declare_ok' =:= element(1, amqp_channel:call(Channel, QDeclareCmd)),
+        "Could not declare queue"),
+    ErrGuard(
+        'queue.bind_ok' =:= element(1, amqp_channel:call(Channel, BindCmd)),
+        "Could not bind queue to exchange"),
+    ErrGuard(
+        'basic.consume_ok' =:= element(1, amqp_channel:call(Channel, ConsumeCmd)),
+        "Could not consume"),
+    return(#state{
+            connection=Connection,
+            channel=Channel,
+            connection_ref=ConnectionRef,
+            channel_ref=ChannelRef}
+)]),
+</code>
+</pre>
 </article>
 
 <article class='nobackground'>
     <h3>State монада</h3>
     <p>Пример реализации вычисления факториала</p>
 <pre>
-<code>
-fact_rec(0) ->
+<code>fact_rec(0) ->
     do([erlmonads_state ||
         Acc &lt;- get(),
         return(Acc)
@@ -124,8 +172,7 @@ fact(N) ->
     <h3>State монада (Haskell)</h3>
     <p>Пример реализации вычисления факториала</p>
 <pre>
-<code>
-fact_rec :: Int -> State Int Int
+<code>fact_rec :: Int -> State Int Int
 fact_rec 0 = do
     acc &lt;- get
     return acc
@@ -136,12 +183,12 @@ fact_rec n = do
 </code>
 </pre>
 </article>
+
 <article class='nobackground'>
     <h3>State монада</h3>
-    <p>Пример реализации вычисления чисел фибоначи</p>
+    <p>Пример реализации вычисления чисел фибоначчи</p>
 <pre>
-<code>
--import(erlmonads_state, [
+<code>-import(erlmonads_state, [
     eval/2, modify/1,
     sequence/1, exec/2
 ]).
@@ -161,7 +208,32 @@ fib(N) ->
 </article>
 
 <article class='nobackground'>
+    <h3>State монада (Haskell)</h3>
+    <p>Пример реализации вычисления чисел фибоначчи</p>
+<pre>
+<code>fib_m_step :: State (Int, Int) ()
+fib_m_step = 
+    modify $ \(a,b) -> (b,a+b)
+
+fib :: Int -> Int
+fib n = fst ((execState $ 
+        sequence (Data.List.replicate n fib_m_step)
+    )
+    (0, 1))
+</code></pre>
+</article>
+
+<article class='nobackground'>
     <h3>Трансформеры</h3>
+    <ul>
+        <li>erlando - использует параметрезированные модули</li>
+        <li>erlmonads - вызов функции через tuple :(</li>
+    </ul>
+<br><br>
+<p>Реализация State-монады через трансформер</p>
+<pre>
+<code>State = erlmonads_state_t:new(erlmonads_identity)</code>
+</pre>
 </article>
 
 <article class='nobackground smaller'>
@@ -169,7 +241,12 @@ fib(N) ->
     <ul>
         <li>
             <a href="https://github.com/habibutsu/erlmonads">
-            Fork me on github (https://github.com/habibutsu/erlmonads)
+            https://github.com/habibutsu/erlmonads
+            </a>
+        </li>
+        <li>
+            <a href="https://github.com/rabbitmq/erlando">
+            https://github.com/rabbitmq/erlando
             </a>
         </li>
     </ul>
