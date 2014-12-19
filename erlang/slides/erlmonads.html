@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<!--
+  Google HTML5 slide template
+
+  Authors: Luke Mahé (code)
+           Marcin Wichary (code and design)
+           
+           Dominic Mazzoni (browser compatibility)
+           Charles Chen (ChromeVox support)
+
+  URL: http://code.google.com/p/html5slides/
+-->
+<html>
+<head>
+    <title>Erlang - библиотека erlmonads</title>
+    <meta charset='utf-8'>
+    <script src='http://html5slides.googlecode.com/svn/trunk/slides.js'></script>
+
+</head>
+<style>
+    /* Your individual styles here, or just use inline styles if that’s
+       what you want. */
+    
+</style>
+<body style='display: none'>
+
+<section class='slides layout-regular template-default'>
+
+<article class='nobackground'>
+    <h1>Erlang</h1>
+    <h4>библиотека erlmonads</h4>
+    <img style="left: 70%; top: 30%; position: absolute;" src="http://www.erlang.org/doc/erlang-logo.png">
+</article>
+
+<article class='nobackground'>
+    <h3>Введение</h3>
+    <ul>
+        <li>Реализация do-нотации, монад</li>
+        <li>Идея из Haskell из-за</li>
+            <ul>
+                <li>Стратегия <i>вызова по имени</i></li>
+                <li>Чистый</li>
+            </ul>
+        <li>Fork of erlando (https://github.com/rabbitmq/erlando)</li>
+    </ul>
+</article>
+
+<article class='nobackground'>
+    <h3>do-нотация</h3>
+    <p>Программная запятая через parse_transform</p>
+<pre>
+<code>do([Monad ||
+    A &lt;- foo(),
+    B &lt;- bar(A, dog),
+    B
+]).
+</code></pre>
+
+<pre>
+<code>Monad:'>>='(
+    foo(),
+    fun (A) -> Monad:'>>='(
+        bar(A, dog),
+        fun (B) -> B end)
+    end).
+</code></pre>
+
+</article>
+
+<article class='nobackground'>
+    <h3>do-нотация (Haskell)</h3>
+<pre>
+    <code>
+    do
+        a &lt;- foo
+        b &lt;- bar a dog
+    </code>
+</pre>
+<pre>
+    <code>
+    foo >>= \a ->
+        bar a dog >>= \b -> b
+    </code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Maybe</h3>
+<pre>
+<code>return(X) -> {just, X}.
+fail(_X)  -> nothing.
+</code>
+</pre>
+<pre>
+<code>do([erlmonads_maybe ||
+    Num &lt;- get_number(),
+    erlmonads_plus:guard(erlmonads_maybe, is_number(Num)),
+    processing_number(Num),
+    return(Num)
+])
+</code></pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Error</h3>
+    <p>Варианты обработки ошибов</p>
+    <ul>
+        <li>Patter matching в аргументах функции</li>
+        <li>Вложенные case-ы</li>
+        <li>Исключения</li>
+    </ul>
+</article>
+
+<article class='nobackground'>
+    <h3>Error</h3>
+<pre style="font-size: 16px; line-height: 20px;">
+<code>ErrGuard = erlmonads_plus:guard(erlmonads_error, _, _),
+
+Res = do([erlmonads_error||
+    Connection &lt;- amqp_connection:start(AMQP_params),
+    Channel &lt;- amqp_connection:open_channel(Connection),
+    ConnectionRef &lt;- return(erlang:monitor(process, Connection)),
+    ChannelRef &lt;- return(erlang:monitor(process, Channel)),
+    ErrGuard(
+        'exchange.declare_ok' =:= element(1, amqp_channel:call(Channel, EDeclareCmd)),
+        "Could not declare exchange"),
+    ErrGuard(
+        'queue.declare_ok' =:= element(1, amqp_channel:call(Channel, QDeclareCmd)),
+        "Could not declare queue"),
+    ErrGuard(
+        'queue.bind_ok' =:= element(1, amqp_channel:call(Channel, BindCmd)),
+        "Could not bind queue to exchange"),
+    ErrGuard(
+        'basic.consume_ok' =:= element(1, amqp_channel:call(Channel, ConsumeCmd)),
+        "Could not consume"),
+    return(#state{
+            connection=Connection,
+            channel=Channel,
+            connection_ref=ConnectionRef,
+            channel_ref=ChannelRef}
+)]),
+</code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>State монада</h3>
+    <p>Пример реализации вычисления факториала</p>
+<pre>
+<code>fact_rec(0) ->
+    do([erlmonads_state ||
+        Acc &lt;- get(),
+        return(Acc)
+    ]);
+fact_rec(N) ->
+    do([erlmonads_state ||
+        Acc &lt;- get(),
+        put(Acc * N),
+        fact_rec(N - 1)
+    ]).
+
+fact(N) ->
+    erlmonads_state:eval(
+        fact_rec(N),
+        1
+    ).
+</code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>State монада (Haskell)</h3>
+    <p>Пример реализации вычисления факториала</p>
+<pre>
+<code>fact_rec :: Int -> State Int Int
+fact_rec 0 = do
+    acc &lt;- get
+    return acc
+fact_rec n = do
+    acc &lt;- get
+    put (acc * n)
+    fact_rec (n - 1)
+</code>
+</pre>
+</article>
+
+<article class='nobackground'>
+    <h3>State монада</h3>
+    <p>Пример реализации вычисления чисел фибоначчи</p>
+<pre>
+<code>-import(erlmonads_state, [
+    eval/2, modify/1,
+    sequence/1, exec/2
+]).
+
+fib_m_step() ->
+    modify(fun ({X, Y}) -> {Y, X+Y} end).
+
+fib(N) ->
+    {A, _} = exec(
+        sequence(
+            lists:duplicate(N, fib_m_step())
+        ),
+        {0, 1}
+    ),
+    A.
+</code></pre>
+</article>
+
+<article class='nobackground'>
+    <h3>State монада (Haskell)</h3>
+    <p>Пример реализации вычисления чисел фибоначчи</p>
+<pre>
+<code>fib_m_step :: State (Int, Int) ()
+fib_m_step = 
+    modify $ \(a,b) -> (b,a+b)
+
+fib :: Int -> Int
+fib n = fst ((execState $ 
+        sequence (Data.List.replicate n fib_m_step)
+    )
+    (0, 1))
+</code></pre>
+</article>
+
+<article class='nobackground'>
+    <h3>Трансформеры</h3>
+    <ul>
+        <li>erlando - использует параметрезированные модули</li>
+        <li>erlmonads - вызов функции через tuple :(</li>
+    </ul>
+<br><br>
+<p>Реализация State-монады через трансформер</p>
+<pre>
+<code>State = erlmonads_state_t:new(erlmonads_identity)</code>
+</pre>
+</article>
+
+<article class='nobackground smaller'>
+    <h3>Ссылки</h3>
+    <ul>
+        <li>
+            <a href="https://github.com/habibutsu/erlmonads">
+            https://github.com/habibutsu/erlmonads
+            </a>
+        </li>
+        <li>
+            <a href="https://github.com/rabbitmq/erlando">
+            https://github.com/rabbitmq/erlando
+            </a>
+        </li>
+        <li>
+            <a href="http://erlanger.ru/ru/page/1574/monady-i-srezy-v-erlang-e-erlando">
+            Монады и срезы в Erlang'е: Erlando
+            </a>
+        </li>
+    </ul>
+</section>
+</body>
+</html>
